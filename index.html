@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>营销物料费用分摊系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a0a;--white:#fff;--gray-50:#f7f7f7;--gray-100:#efefef;
+  --gray-200:#dcdcdc;--gray-400:#aaa;--gray-600:#666;--gray-800:#2a2a2a;
+  --blue:#0057ff;--blue-light:#e8f0ff;--green:#00a86b;--green-light:#e6f7f1;
+  --red:#e53e3e;--red-light:#fff5f5;--amber:#d97706;--amber-light:#fffbeb;
+  --purple:#6d28d9;--purple-light:#f5f3ff;
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--gray-50);color:var(--black);font-size:14px;line-height:1.6;min-height:100vh}
+
+header{background:var(--black);color:var(--white);padding:0 40px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-size:15px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.logo-dot{width:6px;height:6px;background:var(--white);border-radius:50%}
+.header-right{display:flex;align-items:center;gap:16px}
+.sync-btn{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:var(--white);padding:6px 14px;border-radius:6px;font-size:12px;font-family:inherit;cursor:pointer;transition:background .2s}
+.sync-btn:hover{background:rgba(255,255,255,.18)}
+.sync-btn:disabled{opacity:.5;cursor:not-allowed}
+.sync-status{font-size:11px;color:rgba(255,255,255,.5);letter-spacing:.03em}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+main{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
+.page-title{font-size:26px;font-weight:400;letter-spacing:-.02em;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--gray-600);margin-bottom:32px;font-weight:300}
+
+.tabs{display:flex;border-bottom:1px solid var(--gray-200);margin-bottom:28px}
+.tab-btn{padding:10px 20px;background:none;border:none;font-family:inherit;font-size:13px;color:var(--gray-400);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s;letter-spacing:.02em}
+.tab-btn.active{color:var(--black);border-bottom-color:var(--black);font-weight:500}
+.tab-btn:hover:not(.active){color:var(--gray-800)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+.card{background:var(--white);border-radius:var(--radius);border:1px solid var(--gray-200);padding:24px;margin-bottom:20px;box-shadow:var(--shadow)}
+.card-title{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.card-title-num{width:20px;height:20px;background:var(--black);color:var(--white);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+
+.month-field{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.month-field label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);white-space:nowrap}
+.month-input{padding:8px 12px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'DM Mono',monospace;font-size:13px;background:var(--white);color:var(--black);outline:none;transition:border-color .2s}
+.month-input:focus{border-color:var(--black)}
+
+.product-select-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.product-select-row label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);white-space:nowrap}
+select.styled{padding:8px 32px 8px 12px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;color:var(--black);outline:none;cursor:pointer;appearance:none;transition:border-color .2s}
+select.styled:focus{border-color:var(--black)}
+
+.color-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.color-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid var(--gray-200);background:var(--gray-100);color:var(--gray-800)}
+.color-tag.is-main{background:var(--black);color:var(--white);border-color:var(--black)}
+.color-tag.is-restricted{background:var(--amber-light);color:var(--amber);border-color:#fde68a}
+.color-tag-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+
+/* Matrix */
+.matrix-wrap{overflow-x:auto;margin-top:4px}
+table.matrix{border-collapse:collapse;font-size:12px;min-width:100%}
+table.matrix th{padding:7px 10px;font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-400);text-align:center;border-bottom:1px solid var(--gray-100);white-space:nowrap;position:relative}
+table.matrix th.col-main{color:var(--black);font-weight:600}
+table.matrix th .main-badge{display:block;font-size:9px;font-weight:400;color:var(--gray-400);text-transform:none;letter-spacing:0;margin-top:1px}
+table.matrix th.region-col{text-align:left;min-width:130px}
+table.matrix td{padding:8px 10px;border-bottom:1px solid var(--gray-100);text-align:center;vertical-align:middle}
+table.matrix td.region-name{text-align:left;font-weight:500;font-size:13px;white-space:nowrap}
+table.matrix td.ratio-cell{font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-400);text-align:right;white-space:nowrap}
+table.matrix tr:last-child td{border-bottom:none}
+table.matrix tr.region-off td{opacity:.4}
+/* select-all header row */
+table.matrix tr.select-all-row th{padding:4px 10px;background:var(--gray-50);border-bottom:1px solid var(--gray-100)}
+
+.cb-wrap{display:flex;align-items:center;justify-content:center}
+input[type=checkbox].matrix-cb{width:15px;height:15px;cursor:pointer;accent-color:var(--black)}
+input[type=checkbox].matrix-cb:disabled{cursor:not-allowed;accent-color:var(--gray-300)}
+/* main color cell auto-checked styling */
+td.main-auto{background:var(--gray-50)}
+td.main-auto .auto-check-icon{color:var(--gray-400);font-size:14px;line-height:1}
+
+.region-toggle{width:36px;height:20px;background:var(--gray-200);border-radius:10px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.region-toggle::after{content:'';position:absolute;width:14px;height:14px;background:var(--white);border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.region-toggle.on{background:var(--black)}
+.region-toggle.on::after{transform:translateX(16px)}
+
+.alert{padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:14px;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+.alert-warn{background:var(--amber-light);color:var(--amber);border:1px solid #fde68a}
+.alert-ok{background:var(--green-light);color:var(--green);border:1px solid #a7f3d0}
+.alert-info{background:var(--blue-light);color:var(--blue);border:1px solid #bfdbfe}
+
+/* Budget */
+.material-section{border:1px solid var(--gray-200);border-radius:var(--radius-sm);margin-bottom:14px;overflow:hidden}
+.material-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);flex-wrap:wrap;gap:8px}
+.material-label{font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--gray-800);display:flex;align-items:center;gap:8px}
+.material-type-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500}
+.badge-color{background:var(--purple-light);color:var(--purple);border:1px solid #ddd6fe}
+.badge-fixed{background:var(--blue-light);color:var(--blue);border:1px solid #bfdbfe}
+.material-body{padding:16px}
+.budget-type-toggle{display:flex;gap:6px;flex-wrap:wrap}
+.type-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--gray-200);background:var(--white);font-size:12px;font-family:inherit;cursor:pointer;transition:all .15s;color:var(--gray-600)}
+.type-pill.active{background:var(--black);color:var(--white);border-color:var(--black)}
+
+.color-price-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.color-price-field label{display:block;font-size:11px;font-weight:500;color:var(--gray-600);margin-bottom:5px}
+.input-wrap{position:relative}
+.input-wrap .prefix{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-size:12px;color:var(--gray-400);pointer-events:none}
+input.num-input{width:100%;padding:8px 10px 8px 22px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'DM Mono',monospace;font-size:13px;background:var(--white);color:var(--black);outline:none;transition:border-color .2s,box-shadow .2s}
+input.num-input:focus{border-color:var(--black);box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+input.num-input.has-value{border-color:var(--gray-400)}
+input.num-input[readonly]{background:var(--gray-50);color:var(--gray-600)}
+
+.fixed-budget-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.fixed-budget-row label{font-size:12px;color:var(--gray-600);white-space:nowrap;min-width:50px}
+.fixed-budget-row .input-wrap{flex:1;max-width:220px}
+
+.spread-hint{margin-top:12px;font-size:11px;color:var(--gray-400);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spread-btn{font-size:11px;padding:3px 10px;border:1px solid var(--gray-200);border-radius:20px;background:var(--white);cursor:pointer;font-family:inherit;color:var(--gray-600);transition:border-color .15s}
+.spread-btn:hover{border-color:var(--black);color:var(--black)}
+
+.remark-field{margin-top:16px}
+.remark-field label{display:block;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);margin-bottom:6px}
+textarea.remark-input{width:100%;padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--white);color:var(--black);resize:vertical;min-height:70px;outline:none;transition:border-color .2s}
+textarea.remark-input:focus{border-color:var(--black)}
+
+.calc-btn{width:100%;padding:14px;background:var(--black);color:var(--white);border:none;border-radius:var(--radius-sm);font-family:'DM Sans',inherit;font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background .2s,transform .1s;margin-top:8px}
+.calc-btn:hover{background:var(--gray-800)}
+.calc-btn:active{transform:scale(.99)}
+.calc-btn:disabled{background:var(--gray-200);color:var(--gray-400);cursor:not-allowed}
+
+.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.result-meta{font-size:12px;color:var(--gray-400);margin-top:3px}
+.export-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;color:var(--gray-800);cursor:pointer;transition:border-color .2s;white-space:nowrap}
+.export-btn:hover{border-color:var(--black)}
+.result-wrap-inner{overflow-x:auto}
+table.result-tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:500px}
+table.result-tbl th{text-align:right;padding:8px 12px;font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-400);border-bottom:1px solid var(--gray-100);background:var(--gray-50);white-space:nowrap}
+table.result-tbl th:first-child{text-align:left}
+table.result-tbl td{padding:10px 12px;border-bottom:1px solid var(--gray-100);font-family:'DM Mono',monospace;text-align:right;font-size:12px}
+table.result-tbl td:first-child{font-family:'DM Sans',sans-serif;font-size:13px;text-align:left;font-weight:500}
+table.result-tbl tr:last-child td{border-bottom:none}
+table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200);background:var(--gray-50);color:var(--black)}
+.cell-total{font-size:13px!important;font-weight:600!important}
+
+/* color breakdown in result */
+.color-breakdown{font-size:11px;color:var(--gray-400);margin-top:2px;font-family:'DM Mono',monospace}
+
+.history-list{display:flex;flex-direction:column;gap:10px}
+.history-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-sm);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.history-card:hover{border-color:var(--gray-400);box-shadow:var(--shadow)}
+.history-month{font-size:14px;font-weight:500}
+.history-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
+.history-total{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
+.history-del{background:none;border:1px solid var(--gray-200);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--red);cursor:pointer;margin-left:12px;font-family:inherit}
+.history-del:hover{background:var(--red-light);border-color:var(--red)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--gray-400);font-size:13px}
+
+.notion-info{display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--blue-light);border:1px solid #bfdbfe;border-radius:var(--radius-sm);margin-bottom:20px}
+.notion-info-text{font-size:12px;color:#1d4ed8;line-height:1.7}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:var(--white);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+@media(max-width:700px){
+  header{padding:0 16px}
+  main{padding:20px 16px 60px}
+  .page-title{font-size:20px}
+  .color-price-grid{grid-template-columns:1fr 1fr}
+  .material-header{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="logo-dot"></span>Dreame · 营销费用分摊</div>
+  <div class="header-right">
+    <span class="sync-status" id="syncStatus"><span class="sync-dot"></span>数据已同步</span>
+    <button class="sync-btn" id="syncBtn" onclick="syncFromNotion()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5A6.5 6.5 0 1 1 2.5 8"/><polyline points="1,5 2.5,2.5 5,4"/></svg>
+      同步 Notion
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="page-title">营销物料费用分摊</div>
+  <div class="page-sub">主色费用由所有参与区域共摊，套色费用由勾选区域分摊</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('calc',this)">计算分摊</button>
+    <button class="tab-btn" onclick="switchTab('history',this)">历史记录</button>
+    <button class="tab-btn" onclick="switchTab('data',this)">基础数据</button>
+  </div>
+
+  <!-- TAB: 计算 -->
+  <div class="tab-panel active" id="tab-calc">
+
+    <div class="card">
+      <div class="card-title"><span class="card-title-num">1</span>计算月份 &amp; 产品</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+        <div class="month-field">
+          <label>截止月份</label>
+          <input type="month" class="month-input" id="calcMonth">
+        </div>
+        <div class="product-select-row">
+          <label>选择产品</label>
+          <select class="styled" id="productSelect" onchange="onProductChange()">
+            <option value="">— 请选择产品 —</option>
+          </select>
+        </div>
+      </div>
+      <div class="color-tags" id="colorTagsWrap" style="display:none"></div>
+    </div>
+
+    <div class="card" id="card-step2" style="display:none">
+      <div class="card-title"><span class="card-title-num">2</span>各区域要哪些颜色</div>
+      <div id="matrixAlertWrap"></div>
+      <div class="matrix-wrap">
+        <table class="matrix" id="matrixTable"></table>
+      </div>
+    </div>
+
+    <div class="card" id="card-step3" style="display:none">
+      <div class="card-title"><span class="card-title-num">3</span>素材预算</div>
+      <div id="materialSections"></div>
+      <div class="remark-field">
+        <label>备注说明</label>
+        <textarea class="remark-input" id="remark" placeholder="可填写费用来源、是否含税等补充说明…"></textarea>
+      </div>
+    </div>
+
+    <button class="calc-btn" id="calcBtn" onclick="calculate()" style="display:none">计算分摊结果</button>
+    <div id="resultWrap" style="margin-top:28px;display:none"></div>
+  </div>
+
+  <!-- TAB: 历史 -->
+  <div class="tab-panel" id="tab-history">
+    <div class="card">
+      <div class="card-title">历史计算记录</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- TAB: 数据 -->
+  <div class="tab-panel" id="tab-data">
+    <div class="notion-info">
+      <span style="font-size:20px;flex-shrink:0">🗂️</span>
+      <div class="notion-info-text">
+        <strong>数据来源：Notion</strong><br>
+        区域比例库：<a href="https://www.notion.so/6b7b434c86904e6194560bef867b003c" target="_blank" style="color:#1d4ed8">打开 ↗</a>
+        &nbsp;|&nbsp;
+        产品颜色库：<a href="https://www.notion.so/98f2e4e09df14c14b913884515d37122" target="_blank" style="color:#1d4ed8">打开 ↗</a><br>
+        在 Notion 中更新后，点右上角「同步 Notion」刷新。
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">区域分摊比例</div>
+      <div style="overflow-x:auto">
+        <table class="matrix" id="regionDataTable">
+          <thead><tr>
+            <th class="region-col" style="text-align:left">区域</th>
+            <th style="text-align:right">分摊比例</th>
+            <th style="text-align:left;padding-left:16px">截止月份</th>
+            <th style="text-align:left">备注</th>
+          </tr></thead>
+          <tbody id="regionDataTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">产品颜色库</div>
+      <div id="productDataWrap"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ─────────────────────────────────────
+// 基础数据（与 Notion 同步）
+// ─────────────────────────────────────
+let regions = [
+  {name:'北美',              ratio:8.11,  month:'2026-05', note:''},
+  {name:'西南欧',            ratio:37.96, month:'2026-05', note:''},
+  {name:'东南亚（不含台湾）', ratio:2.00,  month:'2026-05', note:''},
+  {name:'台湾',              ratio:1.87,  month:'2026-05', note:''},
+  {name:'亚欧区',            ratio:9.65,  month:'2026-05', note:''},
+  {name:'东北欧',            ratio:17.92, month:'2026-05', note:''},
+  {name:'日本',              ratio:0.18,  month:'2026-05', note:''},
+  {name:'韩国',              ratio:4.05,  month:'2026-05', note:''},
+  {name:'澳洲',              ratio:3.46,  month:'2026-05', note:''},
+  {name:'新兴',              ratio:6.98,  month:'2026-05', note:''},
+  {name:'土耳其',            ratio:7.83,  month:'2026-05', note:''},
+];
+
+// 产品库：colors[0] 始终为主色，其余为套色
+// restrictedTo: null = 所有区域可选；array = 仅这些区域可选
+let products = [
+  {
+    name: 'Aqua20 Pro Ultra X/S Roller Complete',
+    colors: [
+      {name:'纯色黑',   restrictedTo: null},           // 主色
+      {name:'纯色白',   restrictedTo: null},
+      {name:'岩纹黑',   restrictedTo: null},
+      {name:'岩纹白',   restrictedTo: null},
+      {name:'细闪玻璃', restrictedTo: ['台湾']},
+      {name:'Master',   restrictedTo: ['韩国']},
+    ]
+  },
+  {
+    name: 'X60 Pro Ultra',
+    colors: [
+      {name:'黑色', restrictedTo: null},               // 主色
+      {name:'白色', restrictedTo: null},
+    ]
+  }
+];
+
+const MATS = ['graphic','live','render','compare'];
+const MAT_LABELS = {graphic:'平面素材', live:'实拍视频', render:'渲染视频', compare:'对比视频'};
+
+// 计算状态
+let S = {};
+let history = JSON.parse(localStorage.getItem('dreame_budget_v3') || '[]');
+
+// ─────────────────────────────────────
+// 初始化
+// ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  document.getElementById('calcMonth').value =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  populateProductSelect();
+  renderDataTab();
+  renderHistory();
+});
+
+function populateProductSelect() {
+  const sel = document.getElementById('productSelect');
+  sel.innerHTML = '<option value="">— 请选择产品 —</option>';
+  products.forEach((p,i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = p.name; sel.appendChild(o);
+  });
+}
+
+// ─────────────────────────────────────
+// Step 1: 选产品
+// ─────────────────────────────────────
+function onProductChange() {
+  const idx = document.getElementById('productSelect').value;
+  ['card-step2','card-step3'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('calcBtn').style.display = 'none';
+  document.getElementById('resultWrap').style.display = 'none';
+  document.getElementById('colorTagsWrap').style.display = 'none';
+  if (idx === '') { S = {}; return; }
+
+  const p = products[parseInt(idx)];
+  initState(p);
+  renderColorTags(p);
+  renderMatrix();
+  renderMaterialSections();
+  document.getElementById('card-step2').style.display = 'block';
+  document.getElementById('card-step3').style.display = 'block';
+  document.getElementById('calcBtn').style.display = 'block';
+}
+
+function initState(p) {
+  S = {
+    product: p,
+    regionActive: {},   // regionName → bool
+    colorChecks: {},    // regionName → {colorName → bool}
+    budgetTypes: {graphic:'color', live:'color', render:'fixed', compare:'fixed'},
+    simpleMode:  {graphic:true, live:true, render:false, compare:false},
+    simpleTotals:{graphic:0, live:0, render:0, compare:0},
+    colorPrices: {},    // matKey → {colorName → number}
+    fixedBudgets:{graphic:0, live:0, render:0, compare:0},
+  };
+  regions.forEach(r => {
+    S.regionActive[r.name] = true;
+    S.colorChecks[r.name] = {};
+    p.colors.forEach(c => {
+      // 默认：限制色只勾允许的区域，主色(index=0)默认勾上所有可选区域
+      const allowed = !c.restrictedTo || c.restrictedTo.includes(r.name);
+      S.colorChecks[r.name][c.name] = allowed;
+    });
+  });
+  MATS.forEach(m => {
+    S.colorPrices[m] = {};
+    p.colors.forEach(c => { S.colorPrices[m][c.name] = 0; });
+  });
+}
+
+// ─────────────────────────────────────
+// 颜色标签
+// ─────────────────────────────────────
+function renderColorTags(p) {
+  const wrap = document.getElementById('colorTagsWrap');
+  wrap.style.display = 'flex';
+  wrap.innerHTML = p.colors.map((c,i) => {
+    const isMain = i === 0;
+    const isRestricted = !!c.restrictedTo;
+    let cls = 'color-tag';
+    if (isMain) cls += ' is-main';
+    else if (isRestricted) cls += ' is-restricted';
+    const hint = isMain ? '主色' : (isRestricted ? `仅${c.restrictedTo.join('、')}` : '套色');
+    return `<span class="${cls}"><span class="color-tag-dot"></span>${c.name}<span style="opacity:.6;margin-left:3px;font-size:10px">${hint}</span></span>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────
+// Step 2: 矩阵
+// ─────────────────────────────────────
+function renderMatrix() {
+  const p = S.product;
+  const colors = p.colors;
+  const tbl = document.getElementById('matrixTable');
+  let html = '';
+
+  // thead
+  html += '<thead>';
+  // 第一行：列标题
+  html += '<tr>';
+  html += '<th style="width:34px"></th>';
+  html += '<th class="region-col" style="text-align:left">区域</th>';
+  html += '<th style="text-align:right">比例</th>';
+  colors.forEach((c,i) => {
+    const isMain = i === 0;
+    html += `<th class="${isMain ? 'col-main' : ''}">${c.name}${c.restrictedTo ? '<span class="main-badge">限定区域</span>' : (isMain ? '<span class="main-badge">主色</span>' : '<span class="main-badge">套色</span>')}`;
+    html += `</th>`;
+  });
+  html += '</tr>';
+
+  // 全选行
+  html += '<tr class="select-all-row">';
+  html += '<th></th><th style="text-align:left;font-size:11px;color:var(--gray-600);font-weight:400;text-transform:none;letter-spacing:0">全选 / 取消</th><th></th>';
+  colors.forEach((c,i) => {
+    if (i === 0) {
+      // 主色不显示全选（主色由系统自动处理）
+      html += '<th></th>';
+    } else {
+      const allSelectable = regions.filter(r => S.regionActive[r.name] && (!c.restrictedTo || c.restrictedTo.includes(r.name)));
+      const allChecked = allSelectable.length > 0 && allSelectable.every(r => S.colorChecks[r.name][c.name]);
+      html += `<th><div class="cb-wrap"><input type="checkbox" class="matrix-cb" ${allChecked?'checked':''} onchange="selectAllColor('${c.name}',this.checked)" title="全选${c.name}"></div></th>`;
+    }
+  });
+  html += '</tr>';
+  html += '</thead>';
+
+  // tbody
+  html += '<tbody>';
+  regions.forEach(r => {
+    const isOn = S.regionActive[r.name];
+    html += `<tr class="${isOn?'':'region-off'}" id="mrow-${eid(r.name)}">`;
+    html += `<td><button class="region-toggle ${isOn?'on':''}" onclick="toggleRegion('${r.name}')"></button></td>`;
+    html += `<td class="region-name">${r.name}</td>`;
+    html += `<td class="ratio-cell">${r.ratio}%</td>`;
+
+    colors.forEach((c,i) => {
+      const allowed = !c.restrictedTo || c.restrictedTo.includes(r.name);
+      if (i === 0) {
+        // 主色：只要区域参与任意颜色就自动计入，显示为只读
+        const hasAny = colors.slice(1).some(sc => S.colorChecks[r.name][sc.name]);
+        const autoOn = isOn; // 只要区域开启就参与主色
+        html += `<td class="main-auto"><div class="cb-wrap"><span class="auto-check-icon" title="主色由系统自动计入">${autoOn ? '✓' : '—'}</span></div></td>`;
+      } else if (!allowed) {
+        html += `<td><span style="color:var(--gray-200);font-size:15px">—</span></td>`;
+      } else {
+        const checked = S.colorChecks[r.name][c.name] && isOn;
+        html += `<td><div class="cb-wrap"><input type="checkbox" class="matrix-cb" ${checked?'checked':''} ${isOn?'':'disabled'} onchange="onColorCheck('${r.name}','${c.name}',this.checked)"></div></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  tbl.innerHTML = html;
+  updateMatrixAlert();
+}
+
+function eid(s){ return s.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function toggleRegion(name) {
+  S.regionActive[name] = !S.regionActive[name];
+  renderMatrix();
+}
+
+function onColorCheck(region, color, checked) {
+  S.colorChecks[region][color] = checked;
+  // re-render just to keep select-all in sync
+  renderMatrix();
+}
+
+function selectAllColor(colorName, checked) {
+  regions.forEach(r => {
+    if (!S.regionActive[r.name]) return;
+    const c = S.product.colors.find(x => x.name === colorName);
+    if (!c) return;
+    const allowed = !c.restrictedTo || c.restrictedTo.includes(r.name);
+    if (allowed) S.colorChecks[r.name][colorName] = checked;
+  });
+  renderMatrix();
+}
+
+function updateMatrixAlert() {
+  const wrap = document.getElementById('matrixAlertWrap');
+  const activeR = regions.filter(r => S.regionActive[r.name]);
+  if (!activeR.length) {
+    wrap.innerHTML = `<div class="alert alert-warn">⚠ 请至少开启一个区域</div>`; return;
+  }
+  const total = activeR.reduce((s,r)=>s+r.ratio,0);
+  if (Math.abs(total-100)>0.01) {
+    wrap.innerHTML = `<div class="alert alert-warn">⚠ 当前参与区域比例合计 ${total.toFixed(2)}%，将自动归一化后计算</div>`;
+  } else {
+    wrap.innerHTML = `<div class="alert alert-ok">✓ 参与区域比例合计 100%，可直接计算</div>`;
+  }
+}
+
+// ─────────────────────────────────────
+// Step 3: 素材预算
+// ─────────────────────────────────────
+function renderMaterialSections() {
+  const wrap = document.getElementById('materialSections');
+  wrap.innerHTML = MATS.map(m => `
+    <div class="material-section">
+      <div class="material-header">
+        <div class="material-label">
+          ${MAT_LABELS[m]}
+          <span class="material-type-badge ${S.budgetTypes[m]==='color'?'badge-color':'badge-fixed'}" id="badge-${m}">
+            ${S.budgetTypes[m]==='color'?'按颜色计费':'固定总预算'}
+          </span>
+        </div>
+        <div class="budget-type-toggle">
+          <button class="type-pill ${S.budgetTypes[m]==='color'?'active':''}" onclick="setBudgetType('${m}','color',this)">按颜色计费</button>
+          <button class="type-pill ${S.budgetTypes[m]==='fixed'?'active':''}" onclick="setBudgetType('${m}','fixed',this)">固定总预算</button>
+        </div>
+      </div>
+      <div class="material-body" id="body-${m}"></div>
+    </div>`).join('');
+  MATS.forEach(renderBodyFor);
+}
+
+function setBudgetType(mat, type, btn) {
+  S.budgetTypes[mat] = type;
+  btn.closest('.budget-type-toggle').querySelectorAll('.type-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  const badge = document.getElementById(`badge-${mat}`);
+  badge.textContent = type==='color'?'按颜色计费':'固定总预算';
+  badge.className = `material-type-badge ${type==='color'?'badge-color':'badge-fixed'}`;
+  renderBodyFor(mat);
+}
+
+function renderBodyFor(mat) {
+  const body = document.getElementById(`body-${mat}`);
+  const type = S.budgetTypes[mat];
+  const p = S.product;
+
+  if (type === 'fixed') {
+    const v = S.fixedBudgets[mat] || 0;
+    body.innerHTML = `
+      <div class="fixed-budget-row">
+        <label>总预算</label>
+        <div class="input-wrap">
+          <span class="prefix">¥</span>
+          <input type="text" class="num-input ${v?'has-value':''}" id="fixed-${mat}"
+            value="${v?fmtNum(v):''}" placeholder="0.00"
+            oninput="S.fixedBudgets['${mat}']=parseNum(this.value)"
+            onfocus="this.value=parseNum(this.value)||''" >
+        </div>
+        <span style="font-size:12px;color:var(--gray-400)">所有参与区域按比例整体分摊</span>
+      </div>`;
+    return;
+  }
+
+  // 颜色计费
+  const isSimple = S.simpleMode[mat];
+  const tot = S.simpleTotals[mat] || 0;
+  let html = '';
+
+  if (isSimple) {
+    html += `<div class="fixed-budget-row" style="margin-bottom:14px">
+      <label>总价</label>
+      <div class="input-wrap">
+        <span class="prefix">¥</span>
+        <input type="text" class="num-input ${tot?'has-value':''}" id="stotal-${mat}"
+          value="${tot?fmtNum(tot):''}" placeholder="0.00"
+          oninput="onSimpleTotal('${mat}',this)"
+          onfocus="this.value=parseNum(this.value)||''">
+      </div>
+      <span style="font-size:12px;color:var(--gray-400)">÷ ${p.colors.length} 色 = 每色 ¥<span id="per-color-${mat}">${tot?fmtNum(Math.round(tot/p.colors.length*100)/100):'—'}</span></span>
+    </div>`;
+    html += `<div class="color-price-grid">`;
+    p.colors.forEach((c,i) => {
+      const perC = tot>0 ? Math.round(tot/p.colors.length*100)/100 : 0;
+      html += colorPriceField(mat, c, i, perC, true);
+    });
+    html += `</div>`;
+    html += `<div class="spread-hint">
+      <button class="spread-btn" onclick="switchMode('${mat}',false)">切换为逐色单独报价</button>
+      当前：总价平均分到每个颜色
+    </div>`;
+  } else {
+    html += `<div class="color-price-grid">`;
+    p.colors.forEach((c,i) => {
+      const v = S.colorPrices[mat][c.name] || 0;
+      html += colorPriceField(mat, c, i, v, false);
+    });
+    html += `</div>`;
+    html += `<div class="spread-hint">
+      <button class="spread-btn" onclick="switchMode('${mat}',true)">切换为总价均摊</button>
+      当前：逐色单独报价
+    </div>`;
+  }
+  body.innerHTML = html;
+}
+
+function colorPriceField(mat, c, i, v, readonly) {
+  const isMain = i === 0;
+  const label = `${c.name}${isMain ? ' <span style="font-size:10px;color:var(--black);background:var(--gray-100);padding:1px 5px;border-radius:4px">主色</span>' : ''}${c.restrictedTo ? ` <span style="font-size:10px;color:var(--amber)">限定</span>` : ''}`;
+  return `<div class="color-price-field">
+    <label>${label}</label>
+    <div class="input-wrap">
+      <span class="prefix">¥</span>
+      <input type="text" class="num-input ${v?'has-value':''} ${readonly?'':'editable'}" id="cp-${mat}-${eid(c.name)}"
+        value="${v?fmtNum(v):''}" placeholder="0.00"
+        ${readonly ? 'readonly' : `oninput="S.colorPrices['${mat}']['${c.name}']=parseNum(this.value)"`}
+        onfocus="if(!this.readOnly)this.value=parseNum(this.value)||''">
+    </div>
+  </div>`;
+}
+
+function onSimpleTotal(mat, el) {
+  const v = parseNum(el.value);
+  S.simpleTotals[mat] = v;
+  el.classList.toggle('has-value', v>0);
+  const p = S.product;
+  const perC = v>0 ? Math.round(v/p.colors.length*100)/100 : 0;
+  const perEl = document.getElementById(`per-color-${mat}`);
+  if (perEl) perEl.textContent = perC ? fmtNum(perC) : '—';
+  p.colors.forEach(c => {
+    const inp = document.getElementById(`cp-${mat}-${eid(c.name)}`);
+    if (inp) { inp.value = perC>0?fmtNum(perC):''; inp.classList.toggle('has-value',perC>0); }
+  });
+}
+
+function switchMode(mat, simple) {
+  if (!simple) {
+    // 把均摊值写入 colorPrices
+    const tot = S.simpleTotals[mat]||0;
+    const p = S.product;
+    p.colors.forEach(c => {
+      S.colorPrices[mat][c.name] = tot>0 ? Math.round(tot/p.colors.length*100)/100 : 0;
+    });
+  }
+  S.simpleMode[mat] = simple;
+  renderBodyFor(mat);
+}
+
+// ─────────────────────────────────────
+// 核心计算引擎
+// ─────────────────────────────────────
+function calculate() {
+  const p = S.product;
+  if (!p) { showToast('⚠ 请先选择产品'); return; }
+  const activeR = regions.filter(r => S.regionActive[r.name]);
+  if (!activeR.length) { showToast('⚠ 请至少开启一个区域'); return; }
+
+  // 归一化比例
+  const rawSum = activeR.reduce((s,r)=>s+r.ratio,0);
+  const norm = r => r.ratio / rawSum; // 归一化后比例
+
+  const mainColor = p.colors[0];
+  const subColors = p.colors.slice(1);
+
+  // 结果容器: detail[regionName][matKey] = amount
+  const detail = {};
+  activeR.forEach(r => { detail[r.name] = {}; MATS.forEach(m => { detail[r.name][m] = 0; }); });
+
+  MATS.forEach(mat => {
+    const type = S.budgetTypes[mat];
+
+    if (type === 'fixed') {
+      // ── 固定预算：所有参与区域按归一化比例分摊 ──
+      const total = S.fixedBudgets[mat] || 0;
+      if (!total) return;
+      let runSum = 0;
+      activeR.forEach((r, i) => {
+        let amt;
+        if (i === activeR.length-1) {
+          amt = Math.round((total - runSum)*100)/100; // 最后一个修正
+        } else {
+          amt = Math.round(total * norm(r) * 100)/100;
+          runSum += amt;
+        }
+        detail[r.name][mat] += amt;
+      });
+      return;
+    }
+
+    // ── 颜色计费模式 ──
+    const prices = getColorPrices(mat, p);
+
+    // 1. 主色：所有开启的参与区域分摊（无论有没有勾主色）
+    const mainPrice = prices[mainColor.name] || 0;
+    if (mainPrice > 0) {
+      let runSum = 0;
+      activeR.forEach((r,i) => {
+        let amt;
+        if (i === activeR.length-1) {
+          amt = Math.round((mainPrice - runSum)*100)/100;
+        } else {
+          amt = Math.round(mainPrice * norm(r) * 100)/100;
+          runSum += amt;
+        }
+        detail[r.name][mat] = Math.round((detail[r.name][mat] + amt)*100)/100;
+      });
+    }
+
+    // 2. 套色：只有勾选了该套色的区域分摊
+    subColors.forEach(c => {
+      const price = prices[c.name] || 0;
+      if (!price) return;
+      // 找勾选了此颜色且区域开启的
+      const wantR = activeR.filter(r => S.colorChecks[r.name][c.name]);
+      if (!wantR.length) return;
+      const wantSum = wantR.reduce((s,r)=>s+r.ratio,0);
+      const normW = r => r.ratio / wantSum;
+      let runSum = 0;
+      wantR.forEach((r,i) => {
+        let amt;
+        if (i === wantR.length-1) {
+          amt = Math.round((price - runSum)*100)/100;
+        } else {
+          amt = Math.round(price * normW(r) * 100)/100;
+          runSum += amt;
+        }
+        detail[r.name][mat] = Math.round((detail[r.name][mat] + amt)*100)/100;
+      });
+    });
+  });
+
+  // 汇总
+  const regionTotals = {};
+  activeR.forEach(r => {
+    regionTotals[r.name] = Math.round(MATS.reduce((s,m)=>s+detail[r.name][m],0)*100)/100;
+  });
+  const grandTotal = Math.round(Object.values(regionTotals).reduce((a,b)=>a+b,0)*100)/100;
+
+  const month = document.getElementById('calcMonth').value;
+  const remark = document.getElementById('remark').value;
+  const rec = {id:Date.now(), month, remark, product:p.name, detail, regionTotals, grandTotal, createdAt:new Date().toLocaleString('zh-CN')};
+
+  renderResult(rec);
+  history.unshift(rec);
+  if (history.length>50) history=history.slice(0,50);
+  localStorage.setItem('dreame_budget_v3', JSON.stringify(history));
+  renderHistory();
+}
+
+function getColorPrices(mat, p) {
+  if (S.simpleMode[mat]) {
+    const tot = S.simpleTotals[mat]||0;
+    const obj = {};
+    p.colors.forEach(c => { obj[c.name] = tot>0?Math.round(tot/p.colors.length*100)/100:0; });
+    return obj;
+  }
+  return S.colorPrices[mat];
+}
+
+// ─────────────────────────────────────
+// 渲染结果
+// ─────────────────────────────────────
+function renderResult(rec, isHistory=false) {
+  const regionNames = Object.keys(rec.regionTotals);
+  const colHdrs = MATS.map(m=>`<th>${MAT_LABELS[m]}</th>`).join('');
+  const rows = regionNames.map(rn => {
+    const cells = MATS.map(m=>`<td>${fmt(rec.detail[rn][m])}</td>`).join('');
+    return `<tr><td>${rn}</td>${cells}<td class="cell-total">${fmt(rec.regionTotals[rn])}</td></tr>`;
+  }).join('');
+  const footCells = MATS.map(m=>{
+    const s = regionNames.reduce((sum,rn)=>sum+rec.detail[rn][m],0);
+    return `<td>${fmt(Math.round(s*100)/100)}</td>`;
+  }).join('');
+  const remarkHtml = rec.remark
+    ? `<div style="margin-top:14px;padding:10px 14px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:12px;color:var(--gray-600)">备注：${rec.remark}</div>`
+    : '';
+  const recJson = JSON.stringify(rec).replace(/"/g,'&quot;');
+  const html = `<div class="card fade-in">
+    <div class="result-header">
+      <div>
+        <div class="card-title" style="margin-bottom:4px">分摊结果 · ${rec.month||'—'} · ${rec.product}</div>
+        <div class="result-meta">总费用 ¥${fmt(rec.grandTotal)} · ${regionNames.length} 个区域</div>
+      </div>
+      <button class="export-btn" onclick='exportCSV(${recJson})'>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1v10M4 7l4 4 4-4M2 13h12"/></svg>
+        导出 CSV
+      </button>
+    </div>
+    <div class="result-wrap-inner">
+      <table class="result-tbl">
+        <thead><tr><th>区域</th>${colHdrs}<th>合计</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td style="font-family:'DM Sans',sans-serif">合计</td>${footCells}<td class="cell-total">${fmt(rec.grandTotal)}</td></tr></tfoot>
+      </table>
+    </div>
+    ${remarkHtml}
+  </div>`;
+  if (isHistory) return html;
+  const wrap = document.getElementById('resultWrap');
+  wrap.style.display='block'; wrap.innerHTML=html;
+  wrap.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ─────────────────────────────────────
+// 历史
+// ─────────────────────────────────────
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (!history.length) {
+    el.innerHTML=`<div class="empty-state"><div style="font-size:32px;margin-bottom:12px">📋</div>暂无历史记录</div>`; return;
+  }
+  el.innerHTML = `<div class="history-list">` + history.map(rec=>`
+    <div>
+      <div class="history-card" onclick="expandHist(${rec.id})">
+        <div>
+          <div class="history-month">${rec.month||'—'} · ${rec.product}</div>
+          <div class="history-sub">${rec.createdAt}${rec.remark?' · '+rec.remark.slice(0,24):''}</div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="history-total">¥${fmt(rec.grandTotal)}</span>
+          <button class="history-del" onclick="event.stopPropagation();delHist(${rec.id})">删除</button>
+        </div>
+      </div>
+      <div id="hd-${rec.id}" style="display:none;margin-top:-8px"></div>
+    </div>`).join('') + `</div>`;
+}
+
+function expandHist(id) {
+  const rec = history.find(r=>r.id==id); if(!rec) return;
+  const el = document.getElementById(`hd-${id}`);
+  if (el.style.display==='block'){el.style.display='none';return;}
+  el.style.display='block'; el.innerHTML=renderResult(rec,true);
+}
+function delHist(id) {
+  if(!confirm('确认删除？')) return;
+  history=history.filter(r=>r.id!=id);
+  localStorage.setItem('dreame_budget_v3',JSON.stringify(history));
+  renderHistory();
+}
+
+// ─────────────────────────────────────
+// 基础数据 Tab
+// ─────────────────────────────────────
+function renderDataTab() {
+  document.getElementById('regionDataTbody').innerHTML = regions.map(r=>`
+    <tr>
+      <td style="text-align:left;font-weight:500">${r.name}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${r.ratio}%</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--gray-600);padding-left:16px">${r.month||'—'}</td>
+      <td style="color:var(--gray-400)">${r.note||'—'}</td>
+    </tr>`).join('');
+
+  document.getElementById('productDataWrap').innerHTML = products.map(p=>`
+    <div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">${p.name}</div>
+      <div class="color-tags">${p.colors.map((c,i)=>{
+        const isMain=i===0, isR=!!c.restrictedTo;
+        let cls='color-tag'+(isMain?' is-main':isR?' is-restricted':'');
+        const hint=isMain?'主色':isR?`仅${c.restrictedTo.join('、')}`:'套色';
+        return `<span class="${cls}"><span class="color-tag-dot"></span>${c.name}<span style="opacity:.6;margin-left:3px;font-size:10px">${hint}</span></span>`;
+      }).join('')}</div>
+    </div>`).join('');
+}
+
+// ─────────────────────────────────────
+// Notion 同步（演示）
+// ─────────────────────────────────────
+async function syncFromNotion() {
+  const btn=document.getElementById('syncBtn'), st=document.getElementById('syncStatus');
+  btn.innerHTML='<span class="spinner"></span> 同步中…'; btn.disabled=true;
+  try {
+    const res = await fetch('/api/notion-sync');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '同步失败');
+
+    // 更新全局数据
+    regions  = data.regions;
+    products = data.products;
+
+    // 刷新产品下拉
+    populateProductSelect();
+    // 如果已选产品，重新初始化
+    const sel = document.getElementById('productSelect');
+    if (sel.value !== '') onProductChange();
+
+    renderDataTab();
+    st.innerHTML='<span class="sync-dot"></span>刚刚同步';
+    showToast('✓ Notion 数据同步成功');
+  } catch(e) {
+    st.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-right:4px"></span>同步失败';
+    showToast('⚠ 同步失败：' + e.message);
+  }
+  btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5A6.5 6.5 0 1 1 2.5 8"/><polyline points="1,5 2.5,2.5 5,4"/></svg> 同步 Notion`;
+  btn.disabled=false;
+}
+
+// ─────────────────────────────────────
+// 导出 CSV
+// ─────────────────────────────────────
+function exportCSV(rec) {
+  const rns = Object.keys(rec.regionTotals);
+  const header = ['区域',...MATS.map(m=>MAT_LABELS[m]),'合计'].join(',');
+  const rows = rns.map(rn=>[rn,...MATS.map(m=>rec.detail[rn][m]),rec.regionTotals[rn]].join(','));
+  const foot = ['合计',...MATS.map(m=>{
+    const s=rns.reduce((sum,rn)=>sum+rec.detail[rn][m],0);
+    return Math.round(s*100)/100;
+  }),rec.grandTotal].join(',');
+  const csv='\uFEFF'+[header,...rows,foot].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`分摊_${rec.month||'export'}_${rec.product}.csv`;
+  a.click();
+}
+
+// ─────────────────────────────────────
+// Tab 切换
+// ─────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='history') renderHistory();
+}
+
+// ─────────────────────────────────────
+// 数字工具
+// ─────────────────────────────────────
+function fmt(n){ return (n||0).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtNum(n){ return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function parseNum(s){ const v=parseFloat(String(s).replace(/,/g,'')); return isNaN(v)?0:Math.round(v*100)/100; }
+
+// 千分符：失焦格式化，获焦还原
+document.addEventListener('focusout', e => {
+  if (!e.target.classList.contains('num-input') || e.target.readOnly) return;
+  const v = parseNum(e.target.value);
+  e.target.value = v>0 ? fmtNum(v) : '';
+  e.target.classList.toggle('has-value', v>0);
+});
+document.addEventListener('focusin', e => {
+  if (!e.target.classList.contains('num-input') || e.target.readOnly) return;
+  const v = parseNum(e.target.value);
+  e.target.value = v>0 ? String(v) : '';
+});
+
+function showToast(msg) {
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0a0a0a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  el.textContent=msg; document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2800);
+}
+</script>
+</body>
+</html>
