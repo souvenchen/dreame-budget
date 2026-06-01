@@ -279,6 +279,42 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
       <div class="card-title" style="margin-bottom:14px">产品颜色库</div>
       <div id="productDataWrap"></div>
     </div>
+
+    <!-- 录入新产品 -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:18px">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="flex-shrink:0"><circle cx="8" cy="8" r="7"/><path d="M8 5v6M5 8h6"/></svg>
+        录入新产品
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);margin-bottom:6px">产品名称</label>
+        <input type="text" id="np-name" placeholder="例：X70 Pro Ultra"
+          style="width:100%;max-width:420px;padding:9px 12px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;outline:none;transition:border-color .2s"
+          onfocus="this.style.borderColor='var(--black)'" onblur="this.style.borderColor='var(--gray-200)'">
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <label style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600)">颜色列表
+            <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-400);margin-left:6px">第一行为主色，其余为套色</span>
+          </label>
+          <button onclick="addColorRow()"
+            style="display:flex;align-items:center;gap:4px;padding:4px 12px;border:1px solid var(--gray-200);border-radius:20px;background:var(--white);font-size:12px;font-family:inherit;cursor:pointer;color:var(--gray-600)"
+            onmouseover="this.style.borderColor='var(--black)';this.style.color='var(--black)'"
+            onmouseout="this.style.borderColor='var(--gray-200)';this.style.color='var(--gray-600)'">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+            添加颜色
+          </button>
+        </div>
+        <div id="colorRows" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div id="addProductAlert" style="margin-top:12px"></div>
+      <button onclick="submitNewProduct()" id="submitProductBtn"
+        style="margin-top:18px;padding:11px 28px;background:var(--black);color:var(--white);border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:13px;font-weight:500;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;gap:8px"
+        onmouseover="this.style.background='var(--gray-800)'" onmouseout="this.style.background='var(--black)'">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h12M9 3l5 5-5 5"/></svg>
+        保存到 Notion 并同步
+      </button>
+    </div>
   </div>
 </main>
 
@@ -879,6 +915,159 @@ function renderDataTab() {
 }
 
 // ─────────────────────────────────────
+// 录入新产品
+// ─────────────────────────────────────
+let colorRowCount = 0;
+
+function addColorRow(name='', restrict='') {
+  colorRowCount++;
+  const idx = colorRowCount;
+  const isMain = document.getElementById('colorRows').children.length === 0;
+  const row = document.createElement('div');
+  row.className = 'color-row';
+  row.dataset.idx = idx;
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+
+  // 序号角标
+  const badge = document.createElement('div');
+  badge.style.cssText = 'display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--gray-100);font-size:10px;font-weight:600;color:var(--gray-600);flex-shrink:0';
+  badge.textContent = document.getElementById('colorRows').children.length + 1;
+
+  // 颜色名输入
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = isMain ? '主色名，如：星空黑' : '套色名，如：皓月白';
+  nameInput.value = name;
+  nameInput.style.cssText = 'flex:1;min-width:130px;max-width:180px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;outline:none;transition:border-color .2s';
+  nameInput.onfocus = () => nameInput.style.borderColor = 'var(--black)';
+  nameInput.onblur  = () => nameInput.style.borderColor = 'var(--gray-200)';
+
+  // 限制区域下拉
+  const sel = document.createElement('select');
+  sel.style.cssText = 'flex:1;min-width:160px;max-width:220px;padding:8px 28px 8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;color:var(--black);cursor:pointer;outline:none;appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;transition:border-color .2s';
+  sel.onfocus = () => sel.style.borderColor = 'var(--black)';
+  sel.onblur  = () => sel.style.borderColor = 'var(--gray-200)';
+  if (isMain) {
+    sel.disabled = true;
+    sel.style.opacity = '0.4';
+    sel.style.cursor = 'not-allowed';
+  }
+  // 选项
+  const noRestrict = document.createElement('option');
+  noRestrict.value = '';
+  noRestrict.textContent = '不限区域（所有区域可选）';
+  sel.appendChild(noRestrict);
+  regions.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.name;
+    opt.textContent = '仅 ' + r.name;
+    if (r.name === restrict) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  // 删除按钮（主色不可删）
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.title = '删除此颜色';
+  delBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 8h10"/></svg>';
+  delBtn.style.cssText = 'width:28px;height:28px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gray-400);transition:all .15s';
+  if (isMain) { delBtn.disabled = true; delBtn.style.opacity = '0.3'; delBtn.style.cursor = 'not-allowed'; }
+  delBtn.onmouseover = () => { if (!delBtn.disabled) { delBtn.style.borderColor='var(--red)'; delBtn.style.color='var(--red)'; }};
+  delBtn.onmouseout  = () => { delBtn.style.borderColor='var(--gray-200)'; delBtn.style.color='var(--gray-400)'; };
+  delBtn.onclick = () => { row.remove(); refreshColorBadges(); };
+
+  row.appendChild(badge);
+  row.appendChild(nameInput);
+  row.appendChild(sel);
+  row.appendChild(delBtn);
+  document.getElementById('colorRows').appendChild(row);
+  refreshColorBadges();
+}
+
+function refreshColorBadges() {
+  document.querySelectorAll('#colorRows .color-row').forEach((row, i) => {
+    row.querySelector('div').textContent = i + 1;
+  });
+}
+
+async function submitNewProduct() {
+  const nameVal = document.getElementById('np-name').value.trim();
+  const alertEl = document.getElementById('addProductAlert');
+
+  if (!nameVal) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 请填写产品名称</div>'; return;
+  }
+  const rows = Array.from(document.querySelectorAll('#colorRows .color-row'));
+  if (rows.length === 0) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 请至少添加一个颜色（主色）</div>'; return;
+  }
+
+  const colorNames = rows.map(r => r.querySelector('input').value.trim());
+  if (colorNames.some(n => !n)) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 颜色名称不能为空</div>'; return;
+  }
+  if (new Set(colorNames).size !== colorNames.length) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 存在重复的颜色名称</div>'; return;
+  }
+
+  // 构建 restrict 备注字符串，格式：颜色仅区域
+  const restrictNotes = [];
+  rows.forEach(r => {
+    const cname = r.querySelector('input').value.trim();
+    const rval  = r.querySelector('select').value;
+    if (rval) restrictNotes.push(`${cname}仅${rval}`);
+  });
+
+  const colorListStr = colorNames.join(',');
+  const noteStr = restrictNotes.join('，');
+
+  // 检查重名
+  if (products.find(p => p.name === nameVal)) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 已存在同名产品，请修改名称</div>'; return;
+  }
+
+  const btn = document.getElementById('submitProductBtn');
+  btn.innerHTML = '<span class="spinner" style="border-top-color:var(--white);border-color:rgba(255,255,255,.3)"></span> 保存中…';
+  btn.disabled = true;
+  alertEl.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/add-product', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nameVal, colorList: colorListStr, note: noteStr }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '写入失败');
+
+    alertEl.innerHTML = '<div class="alert alert-ok">✓ 已保存到 Notion，正在同步…</div>';
+
+    // 同步拉取最新数据
+    await syncFromNotion();
+
+    // 清空表单
+    document.getElementById('np-name').value = '';
+    document.getElementById('colorRows').innerHTML = '';
+    colorRowCount = 0;
+    alertEl.innerHTML = '<div class="alert alert-ok">✓ 新产品「' + nameVal + '」已添加，可在计算页选择</div>';
+
+  } catch(e) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 保存失败：' + e.message + '</div>';
+  }
+
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h12M9 3l5 5-5 5"/></svg> 保存到 Notion 并同步';
+  btn.disabled = false;
+}
+
+// 进入基础数据 tab 时自动初始化一个主色行
+function initAddProductForm() {
+  if (document.getElementById('colorRows').children.length === 0) {
+    addColorRow();
+  }
+}
+
+// ─────────────────────────────────────
 // Notion 同步（演示）
 // ─────────────────────────────────────
 async function syncFromNotion() {
@@ -938,6 +1127,7 @@ function switchTab(tab, btn) {
   document.getElementById(`tab-${tab}`).classList.add('active');
   btn.classList.add('active');
   if(tab==='history') renderHistory();
+  if(tab==='data') initAddProductForm();
 }
 
 // ─────────────────────────────────────
