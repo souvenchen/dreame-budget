@@ -383,6 +383,10 @@ let products = [];
 const MATS = ['graphic','live','render','compare'];
 const MAT_LABELS = {graphic:'平面素材', live:'实拍视频', render:'CG视频', compare:'对比视频'};
 const BASE_PLUS_EXTRA_MATS = ['graphic','render'];
+const COMPARE_COLOR_OPTIONS = [
+  { name:'黑色', compareGroup:'black' },
+  { name:'白色', compareGroup:'white' },
+];
 
 // 计算状态
 let S = {};
@@ -466,8 +470,8 @@ function initState(p) {
     S.materialColors[m] = {};
     S.materialChecks[m] = {};
     S.materialBaseColors[m] = '';
-    p.colors.forEach(c => { S.colorPrices[m][c.name] = 0; });
-    p.colors.forEach(c => {
+    materialColorOptionsFor(m, p).forEach(c => { S.colorPrices[m][c.name] = 0; });
+    materialColorOptionsFor(m, p).forEach(c => {
       S.materialColors[m][c.name] = false;
     });
     if (m === 'graphic' && p.colors[0]) {
@@ -617,15 +621,38 @@ function colorAllowedForRegion(color, regionName) {
   return !color.restrictedTo || color.restrictedTo.includes(regionName);
 }
 
+function colorCompareGroup(colorName) {
+  if (/黑|black/i.test(colorName)) return 'black';
+  if (/白|white/i.test(colorName)) return 'white';
+  return '';
+}
+
+function materialColorOptionsFor(mat, p=S.product) {
+  if (!p) return [];
+  return mat === 'compare' ? COMPARE_COLOR_OPTIONS : p.colors;
+}
+
+function regionHasMaterialColor(mat, region, color) {
+  if (!S.regionActive[region.name]) return false;
+  if (mat !== 'compare') {
+    return !!S.colorChecks[region.name]?.[color.name] && colorAllowedForRegion(color, region.name);
+  }
+  return S.product.colors.some(pc =>
+    colorCompareGroup(pc.name) === color.compareGroup &&
+    S.colorChecks[region.name]?.[pc.name] &&
+    colorAllowedForRegion(pc, region.name)
+  );
+}
+
 function producedColorsFor(mat) {
   const p = S.product;
   if (!p) return [];
-  return p.colors.filter(c => !!S.materialColors[mat]?.[c.name]);
+  return materialColorOptionsFor(mat, p).filter(c => !!S.materialColors[mat]?.[c.name]);
 }
 
 function pricedColorsFor(mat, p=S.product) {
   if (!p) return [];
-  return p.colors.filter(c => !!S.materialColors[mat]?.[c.name]);
+  return materialColorOptionsFor(mat, p).filter(c => !!S.materialColors[mat]?.[c.name]);
 }
 
 function materialParticipants(mat) {
@@ -641,9 +668,9 @@ function syncMaterialChecks() {
   MATS.forEach(mat => {
     regions.forEach(r => {
       S.materialChecks[mat][r.name] ||= {};
-      S.product.colors.forEach(c => {
+      materialColorOptionsFor(mat).forEach(c => {
         const produced = !!S.materialColors[mat][c.name];
-        const available = produced && S.regionActive[r.name] && S.colorChecks[r.name]?.[c.name] && colorAllowedForRegion(c, r.name);
+        const available = produced && regionHasMaterialColor(mat, r, c);
         if (!available) {
           S.materialChecks[mat][r.name][c.name] = false;
         } else if (S.materialChecks[mat][r.name][c.name] === undefined) {
@@ -659,9 +686,10 @@ function renderMaterialColorSetup() {
   const wrap = document.getElementById('materialColorSetup');
   if (!p) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = MATS.map(mat => {
+    const colorOptions = materialColorOptionsFor(mat, p);
     const ruleText = isBasePlusExtra(mat)
       ? '先选主色，再选择是否制作套色'
-      : '每个颜色独立分摊';
+      : (mat === 'compare' ? '按黑 / 白两类独立分摊' : '每个颜色独立分摊');
     const mainSelect = isBasePlusExtra(mat)
       ? `<div class="fixed-budget-row" style="margin-bottom:12px">
           <label>主色</label>
@@ -671,7 +699,7 @@ function renderMaterialColorSetup() {
           </select>
         </div>`
       : '';
-    const chips = p.colors.map(c => {
+    const chips = colorOptions.map(c => {
       const isBase = isBasePlusExtra(mat) && S.materialBaseColors[mat] === c.name;
       const checked = !!S.materialColors[mat][c.name];
       return `<label style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:20px;background:${checked?'var(--gray-100)':'var(--white)'};font-size:12px;cursor:${isBase?'not-allowed':'pointer'};opacity:${isBase?'.75':'1'}">
@@ -717,8 +745,8 @@ function toggleMaterialColor(mat, colorName, checked) {
       if (!checked) {
         S.materialChecks[mat][r.name][colorName] = false;
       } else {
-        const c = S.product.colors.find(x => x.name === colorName);
-        const available = S.regionActive[r.name] && S.colorChecks[r.name]?.[colorName] && c && colorAllowedForRegion(c, r.name);
+        const c = materialColorOptionsFor(mat).find(x => x.name === colorName);
+        const available = c && regionHasMaterialColor(mat, r, c);
         if (available) S.materialChecks[mat][r.name][colorName] = true;
       }
     }
@@ -791,9 +819,7 @@ function renderRegionMaterialRow(region, mat) {
 
 function materialCellAvailable(mat, region, color) {
   return !!S.materialColors[mat]?.[color.name] &&
-    S.regionActive[region.name] &&
-    S.colorChecks[region.name]?.[color.name] &&
-    colorAllowedForRegion(color, region.name);
+    regionHasMaterialColor(mat, region, color);
 }
 
 function onMaterialCheck(mat, region, color, checked) {
