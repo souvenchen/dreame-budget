@@ -910,7 +910,7 @@ function addColorRow(name='', restrict='') {
 
   // 限制区域下拉
   const sel = document.createElement('select');
-  sel.style.cssText = 'flex:1;min-width:160px;max-width:220px;padding:8px 28px 8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;color:var(--black);cursor:pointer;outline:none;appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;transition:border-color .2s';
+  sel.style.cssText = `flex:1;min-width:160px;max-width:220px;padding:8px 28px 8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;color:var(--black);cursor:pointer;outline:none;appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;transition:border-color .2s`;
   sel.onfocus = () => sel.style.borderColor = 'var(--black)';
   sel.onblur  = () => sel.style.borderColor = 'var(--gray-200)';
   if (isMain) {
