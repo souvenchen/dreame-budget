@@ -998,7 +998,7 @@ async function submitNewProduct() {
   alertEl.innerHTML = '';
 
   try {
-    const res = await fetch('/api/add-product', {
+    const res = await fetch('/api/add-product.js', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: nameVal, colorList: colorListStr, note: noteStr }),
@@ -1046,7 +1046,7 @@ async function syncFromNotion({ silent = false } = {}) {
     st.innerHTML = '<span class="sync-dot" style="background:var(--amber)"></span>加载中…';
   }
   try {
-    const res = await fetch('/api/notion-sync');
+    const res = await fetch('/api/notion-sync.js');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '同步失败');
