@@ -100,11 +100,7 @@ td.main-auto .auto-check-icon{color:var(--gray-400);font-size:14px;line-height:1
 .material-label{font-size:12px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--gray-800);display:flex;align-items:center;gap:8px}
 .material-type-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500}
 .badge-color{background:var(--purple-light);color:var(--purple);border:1px solid #ddd6fe}
-.badge-fixed{background:var(--blue-light);color:var(--blue);border:1px solid #bfdbfe}
 .material-body{padding:16px}
-.budget-type-toggle{display:flex;gap:6px;flex-wrap:wrap}
-.type-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--gray-200);background:var(--white);font-size:12px;font-family:inherit;cursor:pointer;transition:all .15s;color:var(--gray-600)}
-.type-pill.active{background:var(--black);color:var(--white);border-color:var(--black)}
 
 .color-price-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .color-price-field label{display:block;font-size:11px;font-weight:500;color:var(--gray-600);margin-bottom:5px}
@@ -447,11 +443,9 @@ function initState(p) {
     product: p,
     regionActive: {},   // regionName → bool
     colorChecks: {},    // regionName → {colorName → bool}
-    budgetTypes: {graphic:'color', live:'color', render:'fixed', compare:'fixed'},
     simpleMode:  {graphic:true, live:true, render:false, compare:false},
     simpleTotals:{graphic:0, live:0, render:0, compare:0},
     colorPrices: {},    // matKey → {colorName → number}
-    fixedBudgets:{graphic:0, live:0, render:0, compare:0},
     materialColors: {},  // matKey → {colorName → bool}
     materialChecks: {},  // matKey → regionName → {colorName → bool}
     materialBaseColors: {}, // matKey → colorName
@@ -856,13 +850,7 @@ function renderMaterialSections() {
       <div class="material-header">
         <div class="material-label">
           ${MAT_LABELS[m]}
-          <span class="material-type-badge ${S.budgetTypes[m]==='color'?'badge-color':'badge-fixed'}" id="badge-${m}">
-            ${S.budgetTypes[m]==='color'?'按颜色计费':'固定总预算'}
-          </span>
-        </div>
-        <div class="budget-type-toggle">
-          <button class="type-pill ${S.budgetTypes[m]==='color'?'active':''}" onclick="setBudgetType('${m}','color',this)">按颜色计费</button>
-          <button class="type-pill ${S.budgetTypes[m]==='fixed'?'active':''}" onclick="setBudgetType('${m}','fixed',this)">固定总预算</button>
+          <span class="material-type-badge badge-color" id="badge-${m}">按颜色报价</span>
         </div>
       </div>
       <div class="material-body" id="body-${m}"></div>
@@ -870,38 +858,10 @@ function renderMaterialSections() {
   MATS.forEach(renderBodyFor);
 }
 
-function setBudgetType(mat, type, btn) {
-  S.budgetTypes[mat] = type;
-  btn.closest('.budget-type-toggle').querySelectorAll('.type-pill').forEach(p=>p.classList.remove('active'));
-  btn.classList.add('active');
-  const badge = document.getElementById(`badge-${mat}`);
-  badge.textContent = type==='color'?'按颜色计费':'固定总预算';
-  badge.className = `material-type-badge ${type==='color'?'badge-color':'badge-fixed'}`;
-  renderBodyFor(mat);
-}
-
 function renderBodyFor(mat) {
   const body = document.getElementById(`body-${mat}`);
-  const type = S.budgetTypes[mat];
   const p = S.product;
   const priceColors = pricedColorsFor(mat, p);
-
-  if (type === 'fixed') {
-    const v = S.fixedBudgets[mat] || 0;
-    body.innerHTML = `
-      <div class="fixed-budget-row">
-        <label>总预算</label>
-        <div class="input-wrap">
-          <span class="prefix">¥</span>
-          <input type="text" class="num-input ${v?'has-value':''}" id="fixed-${mat}"
-            value="${v?fmtNum(v):''}" placeholder="0.00"
-            oninput="S.fixedBudgets['${mat}']=parseNum(this.value)"
-            onfocus="this.value=parseNum(this.value)||''" >
-        </div>
-        <span style="font-size:12px;color:var(--gray-400)">本素材参与区域按比例整体分摊</span>
-      </div>`;
-    return;
-  }
 
   // 颜色计费
   const isSimple = S.simpleMode[mat];
@@ -1029,19 +989,10 @@ function calculate() {
   resultRegions.forEach(r => { detail[r.name] = {}; MATS.forEach(m => { detail[r.name][m] = 0; }); });
 
   MATS.forEach(mat => {
-    const type = S.budgetTypes[mat];
     const addToDetail = (r, amt) => {
       if (!detail[r.name]) return;
       detail[r.name][mat] = Math.round((detail[r.name][mat] + amt)*100)/100;
     };
-
-    if (type === 'fixed') {
-      // ── 固定预算：本素材参与区域按归一化比例分摊 ──
-      const total = S.fixedBudgets[mat] || 0;
-      if (!total) return;
-      distributeByRatio(total, materialParticipants(mat), addToDetail);
-      return;
-    }
 
     // ── 颜色计费模式 ──
     const prices = getColorPrices(mat, p);
