@@ -280,6 +280,41 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
       <div id="productDataWrap"></div>
     </div>
 
+    <div class="card" id="editProductCard" style="display:none">
+      <div class="card-title" style="margin-bottom:18px">编辑产品颜色库</div>
+      <input type="hidden" id="edit-product-id">
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);margin-bottom:6px">产品名称</label>
+        <input type="text" id="edit-product-name" placeholder="产品名称"
+          style="width:100%;max-width:420px;padding:9px 12px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;outline:none;transition:border-color .2s"
+          onfocus="this.style.borderColor='var(--black)'" onblur="this.style.borderColor='var(--gray-200)'">
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <label style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600)">颜色列表
+            <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-400);margin-left:6px">第一行为主色，可用上下箭头调整顺序</span>
+          </label>
+          <button onclick="addColorRow('', '', 'editColorRows')"
+            style="display:flex;align-items:center;gap:4px;padding:4px 12px;border:1px solid var(--gray-200);border-radius:20px;background:var(--white);font-size:12px;font-family:inherit;cursor:pointer;color:var(--gray-600)">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+            添加颜色
+          </button>
+        </div>
+        <div id="editColorRows" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div id="editProductAlert" style="margin-top:12px"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+        <button onclick="submitProductEdit()" id="submitEditProductBtn"
+          style="padding:11px 28px;background:var(--black);color:var(--white);border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:13px;font-weight:500;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;gap:8px">
+          保存修改并同步
+        </button>
+        <button onclick="cancelProductEdit()"
+          style="padding:11px 18px;background:var(--white);color:var(--gray-800);border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;cursor:pointer">
+          取消
+        </button>
+      </div>
+    </div>
+
     <!-- 录入新产品 -->
     <div class="card">
       <div class="card-title" style="margin-bottom:18px">
@@ -868,16 +903,22 @@ function renderDataTab() {
       <td style="color:var(--gray-400)">${r.note||'—'}</td>
     </tr>`).join('');
 
-  document.getElementById('productDataWrap').innerHTML = products.map(p=>`
-    <div style="margin-bottom:20px">
-      <div style="font-size:13px;font-weight:500;margin-bottom:8px">${p.name}</div>
+  document.getElementById('productDataWrap').innerHTML = products.map((p,idx)=>`
+    <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--gray-100)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="font-size:13px;font-weight:500">${p.name}</div>
+        <button onclick="startEditProduct(${idx})"
+          style="padding:5px 12px;border:1px solid var(--gray-200);border-radius:20px;background:var(--white);font-size:12px;font-family:inherit;cursor:pointer;color:var(--gray-600)">
+          编辑
+        </button>
+      </div>
       <div class="color-tags">${p.colors.map((c,i)=>{
         const isMain=i===0, isR=!!c.restrictedTo;
         let cls='color-tag'+(isMain?' is-main':isR?' is-restricted':'');
         const hint=isMain?'主色':isR?`仅${c.restrictedTo.join('、')}`:'套色';
         return `<span class="${cls}"><span class="color-tag-dot"></span>${c.name}<span style="opacity:.6;margin-left:3px;font-size:10px">${hint}</span></span>`;
       }).join('')}</div>
-    </div>`).join('');
+    </div>`).join('') || '<div class="empty-state" style="padding:24px">暂无产品数据，请先同步 Notion</div>';
 }
 
 // ─────────────────────────────────────
@@ -885,10 +926,11 @@ function renderDataTab() {
 // ─────────────────────────────────────
 let colorRowCount = 0;
 
-function addColorRow(name='', restrict='') {
+function addColorRow(name='', restrict='', targetId='colorRows') {
   colorRowCount++;
   const idx = colorRowCount;
-  const isMain = document.getElementById('colorRows').children.length === 0;
+  const target = document.getElementById(targetId);
+  const isMain = target.children.length === 0;
   const row = document.createElement('div');
   row.className = 'color-row';
   row.dataset.idx = idx;
@@ -937,23 +979,140 @@ function addColorRow(name='', restrict='') {
   delBtn.title = '删除此颜色';
   delBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 8h10"/></svg>';
   delBtn.style.cssText = 'width:28px;height:28px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gray-400);transition:all .15s';
-  if (isMain) { delBtn.disabled = true; delBtn.style.opacity = '0.3'; delBtn.style.cursor = 'not-allowed'; }
   delBtn.onmouseover = () => { if (!delBtn.disabled) { delBtn.style.borderColor='var(--red)'; delBtn.style.color='var(--red)'; }};
   delBtn.onmouseout  = () => { delBtn.style.borderColor='var(--gray-200)'; delBtn.style.color='var(--gray-400)'; };
-  delBtn.onclick = () => { row.remove(); refreshColorBadges(); };
+  delBtn.onclick = () => { row.remove(); refreshColorBadges(targetId); };
+
+  const upBtn = document.createElement('button');
+  upBtn.type = 'button';
+  upBtn.title = '上移';
+  upBtn.textContent = '↑';
+  upBtn.style.cssText = 'width:28px;height:28px;border:1px solid var(--gray-200);border-radius:6px;background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gray-600)';
+  upBtn.onclick = () => {
+    if (row.previousElementSibling) target.insertBefore(row, row.previousElementSibling);
+    refreshColorBadges(targetId);
+  };
+
+  const downBtn = document.createElement('button');
+  downBtn.type = 'button';
+  downBtn.title = '下移';
+  downBtn.textContent = '↓';
+  downBtn.style.cssText = upBtn.style.cssText;
+  downBtn.onclick = () => {
+    if (row.nextElementSibling) target.insertBefore(row.nextElementSibling, row);
+    refreshColorBadges(targetId);
+  };
 
   row.appendChild(badge);
   row.appendChild(nameInput);
   row.appendChild(sel);
+  row.appendChild(upBtn);
+  row.appendChild(downBtn);
   row.appendChild(delBtn);
-  document.getElementById('colorRows').appendChild(row);
-  refreshColorBadges();
+  target.appendChild(row);
+  refreshColorBadges(targetId);
 }
 
-function refreshColorBadges() {
-  document.querySelectorAll('#colorRows .color-row').forEach((row, i) => {
+function refreshColorBadges(targetId='colorRows') {
+  document.querySelectorAll(`#${targetId} .color-row`).forEach((row, i) => {
     row.querySelector('div').textContent = i + 1;
+    const sel = row.querySelector('select');
+    const delBtn = row.querySelector('button[title="删除此颜色"]');
+    const isMain = i === 0;
+    if (sel) {
+      sel.disabled = isMain;
+      sel.style.opacity = isMain ? '0.4' : '1';
+      sel.style.cursor = isMain ? 'not-allowed' : 'pointer';
+      if (isMain) sel.value = '';
+    }
+    if (delBtn) {
+      delBtn.disabled = document.querySelectorAll(`#${targetId} .color-row`).length <= 1;
+      delBtn.style.opacity = delBtn.disabled ? '0.3' : '1';
+      delBtn.style.cursor = delBtn.disabled ? 'not-allowed' : 'pointer';
+    }
   });
+}
+
+function buildColorPayload(targetId) {
+  const rows = Array.from(document.querySelectorAll(`#${targetId} .color-row`));
+  const colorNames = rows.map(r => r.querySelector('input').value.trim());
+  if (!rows.length) throw new Error('请至少添加一个颜色（主色）');
+  if (colorNames.some(n => !n)) throw new Error('颜色名称不能为空');
+  if (new Set(colorNames).size !== colorNames.length) throw new Error('存在重复的颜色名称');
+
+  const restrictNotes = [];
+  rows.forEach((r, i) => {
+    const cname = r.querySelector('input').value.trim();
+    const rval  = i === 0 ? '' : r.querySelector('select').value;
+    if (rval) restrictNotes.push(`${cname}仅${rval}`);
+  });
+
+  return {
+    colorList: colorNames.join(','),
+    note: restrictNotes.join('，'),
+  };
+}
+
+function startEditProduct(idx) {
+  const p = products[idx];
+  if (!p?.id) { showToast('⚠ 缺少 Notion 页面 ID，请先同步后再编辑', 5000); return; }
+  document.getElementById('edit-product-id').value = p.id;
+  document.getElementById('edit-product-name').value = p.name;
+  document.getElementById('editProductAlert').innerHTML = '';
+  document.getElementById('editColorRows').innerHTML = '';
+  colorRowCount = 0;
+  p.colors.forEach(c => addColorRow(c.name, c.restrictedTo?.[0] || '', 'editColorRows'));
+  document.getElementById('editProductCard').style.display = 'block';
+  document.getElementById('editProductCard').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function cancelProductEdit() {
+  document.getElementById('editProductCard').style.display = 'none';
+  document.getElementById('editProductAlert').innerHTML = '';
+  document.getElementById('editColorRows').innerHTML = '';
+  document.getElementById('edit-product-id').value = '';
+  document.getElementById('edit-product-name').value = '';
+}
+
+async function submitProductEdit() {
+  const pageId = document.getElementById('edit-product-id').value;
+  const nameVal = document.getElementById('edit-product-name').value.trim();
+  const alertEl = document.getElementById('editProductAlert');
+  if (!pageId) { alertEl.innerHTML = '<div class="alert alert-warn">⚠ 缺少 Notion 页面 ID，请重新同步后再编辑</div>'; return; }
+  if (!nameVal) { alertEl.innerHTML = '<div class="alert alert-warn">⚠ 请填写产品名称</div>'; return; }
+
+  let payload;
+  try {
+    payload = buildColorPayload('editColorRows');
+  } catch (e) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ ' + e.message + '</div>';
+    return;
+  }
+
+  const btn = document.getElementById('submitEditProductBtn');
+  btn.innerHTML = '<span class="spinner" style="border-top-color:var(--white);border-color:rgba(255,255,255,.3)"></span> 保存中…';
+  btn.disabled = true;
+  alertEl.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/update-product.js', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageId, name: nameVal, ...payload }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    alertEl.innerHTML = '<div class="alert alert-ok">✓ 已保存到 Notion，正在同步…</div>';
+    await syncFromNotion();
+    cancelProductEdit();
+    showToast('✓ 产品颜色库已更新');
+  } catch(e) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 保存失败：' + e.message + '</div>';
+  }
+
+  btn.innerHTML = '保存修改并同步';
+  btn.disabled = false;
 }
 
 async function submitNewProduct() {
@@ -963,29 +1122,12 @@ async function submitNewProduct() {
   if (!nameVal) {
     alertEl.innerHTML = '<div class="alert alert-warn">⚠ 请填写产品名称</div>'; return;
   }
-  const rows = Array.from(document.querySelectorAll('#colorRows .color-row'));
-  if (rows.length === 0) {
-    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 请至少添加一个颜色（主色）</div>'; return;
+  let payload;
+  try {
+    payload = buildColorPayload('colorRows');
+  } catch (e) {
+    alertEl.innerHTML = '<div class="alert alert-warn">⚠ ' + e.message + '</div>'; return;
   }
-
-  const colorNames = rows.map(r => r.querySelector('input').value.trim());
-  if (colorNames.some(n => !n)) {
-    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 颜色名称不能为空</div>'; return;
-  }
-  if (new Set(colorNames).size !== colorNames.length) {
-    alertEl.innerHTML = '<div class="alert alert-warn">⚠ 存在重复的颜色名称</div>'; return;
-  }
-
-  // 构建 restrict 备注字符串，格式：颜色仅区域
-  const restrictNotes = [];
-  rows.forEach(r => {
-    const cname = r.querySelector('input').value.trim();
-    const rval  = r.querySelector('select').value;
-    if (rval) restrictNotes.push(`${cname}仅${rval}`);
-  });
-
-  const colorListStr = colorNames.join(',');
-  const noteStr = restrictNotes.join('，');
 
   // 检查重名
   if (products.find(p => p.name === nameVal)) {
@@ -1001,7 +1143,7 @@ async function submitNewProduct() {
     const res = await fetch('/api/add-product.js', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: nameVal, colorList: colorListStr, note: noteStr }),
+      body: JSON.stringify({ name: nameVal, colorList: payload.colorList, note: payload.note }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();

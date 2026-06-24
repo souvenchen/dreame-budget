@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       const colors = colorStr.split(',').map(s => s.trim()).filter(Boolean).map(name => ({
         name, restrictedTo: restrictMap[name] || null,
       }));
-      return { name, colors };
+      return { id: p.id, name, colors };
     }).filter(p => p.name && p.colors.length);
 
     res.status(200).json({ ok: true, regions, products });
