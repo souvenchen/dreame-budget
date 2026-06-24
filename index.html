@@ -320,44 +320,10 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
 
 <script>
 // ─────────────────────────────────────
-// 基础数据（与 Notion 同步）
+// 基础数据（Notion 是唯一数据源，页面加载时自动拉取）
 // ─────────────────────────────────────
-let regions = [
-  {name:'北美',              ratio:8.11,  month:'2026-05', note:''},
-  {name:'西南欧',            ratio:37.96, month:'2026-05', note:''},
-  {name:'东南亚（不含台湾）', ratio:2.00,  month:'2026-05', note:''},
-  {name:'台湾',              ratio:1.87,  month:'2026-05', note:''},
-  {name:'亚欧区',            ratio:9.65,  month:'2026-05', note:''},
-  {name:'东北欧',            ratio:17.92, month:'2026-05', note:''},
-  {name:'日本',              ratio:0.18,  month:'2026-05', note:''},
-  {name:'韩国',              ratio:4.05,  month:'2026-05', note:''},
-  {name:'澳洲',              ratio:3.46,  month:'2026-05', note:''},
-  {name:'新兴',              ratio:6.98,  month:'2026-05', note:''},
-  {name:'土耳其',            ratio:7.83,  month:'2026-05', note:''},
-];
-
-// 产品库：colors[0] 始终为主色，其余为套色
-// restrictedTo: null = 所有区域可选；array = 仅这些区域可选
-let products = [
-  {
-    name: 'Aqua20 Pro Ultra X/S Roller Complete',
-    colors: [
-      {name:'纯色黑',   restrictedTo: null},           // 主色
-      {name:'纯色白',   restrictedTo: null},
-      {name:'岩纹黑',   restrictedTo: null},
-      {name:'岩纹白',   restrictedTo: null},
-      {name:'细闪玻璃', restrictedTo: ['台湾']},
-      {name:'Master',   restrictedTo: ['韩国']},
-    ]
-  },
-  {
-    name: 'X60 Pro Ultra',
-    colors: [
-      {name:'黑色', restrictedTo: null},               // 主色
-      {name:'白色', restrictedTo: null},
-    ]
-  }
-];
+let regions  = [];
+let products = [];
 
 const MATS = ['graphic','live','render','compare'];
 const MAT_LABELS = {graphic:'平面素材', live:'实拍视频', render:'渲染视频', compare:'对比视频'};
@@ -369,13 +335,13 @@ let history = JSON.parse(localStorage.getItem('dreame_budget_v3') || '[]');
 // ─────────────────────────────────────
 // 初始化
 // ─────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const now = new Date();
   document.getElementById('calcMonth').value =
     `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  populateProductSelect();
-  renderDataTab();
   renderHistory();
+  // 页面加载时自动从 Notion 拉取最新数据，覆盖本地缓存
+  await syncFromNotion({ silent: true });
 });
 
 function populateProductSelect() {
@@ -1070,35 +1036,41 @@ function initAddProductForm() {
 // ─────────────────────────────────────
 // Notion 同步（演示）
 // ─────────────────────────────────────
-async function syncFromNotion() {
-  const btn=document.getElementById('syncBtn'), st=document.getElementById('syncStatus');
-  btn.innerHTML='<span class="spinner"></span> 同步中…'; btn.disabled=true;
+async function syncFromNotion({ silent = false } = {}) {
+  const btn = document.getElementById('syncBtn');
+  const st  = document.getElementById('syncStatus');
+  if (!silent) {
+    btn.innerHTML = '<span class="spinner"></span> 同步中…';
+    btn.disabled = true;
+  } else {
+    st.innerHTML = '<span class="sync-dot" style="background:var(--amber)"></span>加载中…';
+  }
   try {
     const res = await fetch('/api/notion-sync');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '同步失败');
 
-    // 更新全局数据
+    // 覆盖全局数据（Notion 是唯一数据源）
     regions  = data.regions;
     products = data.products;
 
-    // 刷新产品下拉
     populateProductSelect();
-    // 如果已选产品，重新初始化
     const sel = document.getElementById('productSelect');
     if (sel.value !== '') onProductChange();
 
     renderDataTab();
-    st.innerHTML='<span class="sync-dot"></span>刚刚同步';
-    showToast('✓ Notion 数据同步成功');
+    st.innerHTML = '<span class="sync-dot"></span>刚刚同步';
+    if (!silent) showToast('✓ Notion 数据同步成功');
+
   } catch(e) {
-    st.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-right:4px"></span>同步失败';
-    showToast('⚠ 同步失败：' + e.message);
+    st.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-right:4px"></span>同步失败';
+    showToast('⚠ ' + (silent ? '数据加载失败，请点「同步 Notion」重试' : '同步失败：' + e.message));
   }
-  btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5A6.5 6.5 0 1 1 2.5 8"/><polyline points="1,5 2.5,2.5 5,4"/></svg> 同步 Notion`;
-  btn.disabled=false;
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5A6.5 6.5 0 1 1 2.5 8"/><polyline points="1,5 2.5,2.5 5,4"/></svg> 同步 Notion`;
+  btn.disabled = false;
 }
+
 
 // ─────────────────────────────────────
 // 导出 CSV
