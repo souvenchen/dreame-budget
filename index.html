@@ -388,6 +388,11 @@ const BASE_PLUS_EXTRA_MATS = ['graphic','render'];
 let S = {};
 let history = JSON.parse(localStorage.getItem('dreame_budget_v3') || '[]');
 
+const PROD_API_ORIGIN = 'https://dreame-budget-new.vercel.app';
+function apiUrl(path) {
+  return location.protocol === 'file:' ? `${PROD_API_ORIGIN}${path}` : path;
+}
+
 // ─────────────────────────────────────
 // 初始化
 // ─────────────────────────────────────
@@ -1338,7 +1343,7 @@ async function submitProductEdit() {
   alertEl.innerHTML = '';
 
   try {
-    const res = await fetch('/api/update-product.js', {
+    const res = await fetch(apiUrl('/api/update-product.js'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pageId, name: nameVal, ...payload }),
@@ -1383,7 +1388,7 @@ async function submitNewProduct() {
   alertEl.innerHTML = '';
 
   try {
-    const res = await fetch('/api/add-product.js', {
+    const res = await fetch(apiUrl('/api/add-product.js'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: nameVal, colorList: payload.colorList, note: payload.note }),
@@ -1431,7 +1436,7 @@ async function syncFromNotion({ silent = false } = {}) {
     st.innerHTML = '<span class="sync-dot" style="background:var(--amber)"></span>加载中…';
   }
   try {
-    const res = await fetch('/api/notion-sync.js');
+    const res = await fetch(apiUrl('/api/notion-sync.js'));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '同步失败');
