@@ -622,6 +622,8 @@ function colorAllowedForRegion(color, regionName) {
 }
 
 function colorCompareGroup(colorName) {
+  if (colorName === '细闪玻璃') return 'black';
+  if (/^master$/i.test(colorName)) return 'white';
   if (/黑|black/i.test(colorName)) return 'black';
   if (/白|white/i.test(colorName)) return 'white';
   return '';
