@@ -1065,7 +1065,8 @@ async function syncFromNotion({ silent = false } = {}) {
 
   } catch(e) {
     st.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;margin-right:4px"></span>同步失败';
-    showToast('⚠ ' + (silent ? '数据加载失败，请点「同步 Notion」重试' : '同步失败：' + e.message));
+    const msg = e.message || '未知错误';
+    showToast('⚠ ' + (silent ? `加载失败：${msg}` : `同步失败：${msg}`), 6000);
   }
   btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5A6.5 6.5 0 1 1 2.5 8"/><polyline points="1,5 2.5,2.5 5,4"/></svg> 同步 Notion`;
   btn.disabled = false;
@@ -1122,11 +1123,11 @@ document.addEventListener('focusin', e => {
   e.target.value = v>0 ? String(v) : '';
 });
 
-function showToast(msg) {
+function showToast(msg, duration=2800) {
   const el=document.createElement('div');
-  el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0a0a0a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0a0a0a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;max-width:90vw;word-break:break-all;box-shadow:0 4px 20px rgba(0,0,0,.3)';
   el.textContent=msg; document.body.appendChild(el);
-  setTimeout(()=>el.remove(),2800);
+  setTimeout(()=>el.remove(),duration);
 }
 </script>
 </body>
