@@ -1,6 +1,6 @@
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const REGION_DB    = process.env.REGION_DB_ID;
-const PRODUCT_DB   = process.env.PRODUCT_DB_ID;
+const REGION_DB    = process.env.REGION_DB_ID  || '6b7b434c-8690-4e61-9456-0bef867b003c';
+const PRODUCT_DB   = process.env.PRODUCT_DB_ID || '98f2e4e0-9df1-4c14-b913-884515d37122';
 
 async function queryDB(dbId, label) {
   const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
@@ -12,7 +12,6 @@ async function queryDB(dbId, label) {
     },
     body: JSON.stringify({ page_size: 100 }),
   });
-
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(`[${label}] Notion API ${res.status}: ${body.message || body.code || '未知错误'}`);
@@ -34,10 +33,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  // 环境变量检查
   if (!NOTION_TOKEN) return res.status(500).json({ ok: false, error: '缺少环境变量 NOTION_TOKEN，请在 Vercel 项目设置中添加' });
-  if (!REGION_DB)   return res.status(500).json({ ok: false, error: '缺少环境变量 REGION_DB_ID' });
-  if (!PRODUCT_DB)  return res.status(500).json({ ok: false, error: '缺少环境变量 PRODUCT_DB_ID' });
 
   try {
     const regionData  = await queryDB(REGION_DB, '区域比例库');
@@ -54,22 +50,17 @@ export default async function handler(req, res) {
       const name     = getProp(p.properties, '产品名称', 'title');
       const colorStr = getProp(p.properties, '颜色列表', 'text') || '';
       const noteStr  = getProp(p.properties, '备注', 'text') || '';
-
       const restrictMap = {};
       for (const m of noteStr.matchAll(/([^,，]+?)仅([^,，]+)/g)) {
         restrictMap[m[1].trim()] = m[2].trim().split(/[\/、]/);
       }
-
       const colors = colorStr.split(',').map(s => s.trim()).filter(Boolean).map(name => ({
-        name,
-        restrictedTo: restrictMap[name] || null,
+        name, restrictedTo: restrictMap[name] || null,
       }));
-
       return { name, colors };
     }).filter(p => p.name && p.colors.length);
 
     res.status(200).json({ ok: true, regions, products });
-
   } catch (e) {
     console.error('[notion-sync]', e.message);
     res.status(500).json({ ok: false, error: e.message });
