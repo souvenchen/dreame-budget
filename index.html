@@ -797,13 +797,19 @@ function renderRegionMaterialRow(region, mat) {
   const enabledColors = colors.filter(c => S.materialChecks[mat]?.[region.name]?.[c.name]);
   const hasMaterial = enabledColors.length > 0;
   const colorControls = colors.map(c => {
+    const isBase = isBasePlusExtra(mat) && S.materialBaseColors[mat] === c.name;
+    if (isBase) {
+      return `<label class="material-color-option base" style="${hasMaterial?'':'opacity:.45'}">
+        <input type="checkbox" class="matrix-cb" ${hasMaterial?'checked':''} disabled>
+        <span>${c.name} · 主色费用</span>
+      </label>`;
+    }
     const available = materialCellAvailable(mat, region, c);
     const checked = !!S.materialChecks[mat]?.[region.name]?.[c.name];
-    const isBase = isBasePlusExtra(mat) && S.materialBaseColors[mat] === c.name;
     return `<label class="material-color-option ${isBase?'base':''}" style="${available?'':'opacity:.45'}">
       <input type="checkbox" class="matrix-cb" ${checked?'checked':''} ${available?'':'disabled'}
         onchange="onMaterialCheck('${mat}','${region.name}','${c.name}',this.checked)">
-      <span>${c.name}${isBase?' · 主色':''}</span>
+      <span>${c.name}</span>
     </label>`;
   }).join('');
   return `<div class="region-material-row">
