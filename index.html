@@ -123,6 +123,20 @@ input.num-input[readonly]{background:var(--gray-50);color:var(--gray-600)}
 .spread-btn{font-size:11px;padding:3px 10px;border:1px solid var(--gray-200);border-radius:20px;background:var(--white);cursor:pointer;font-family:inherit;color:var(--gray-600);transition:border-color .15s}
 .spread-btn:hover{border-color:var(--black);color:var(--black)}
 
+.region-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.region-summary-card{border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:var(--white);overflow:hidden}
+.region-summary-head{display:flex;align-items:center;justify-content:space-between;background:var(--gray-50);border-bottom:1px solid var(--gray-200);padding:10px 12px}
+.region-summary-title{font-size:13px;font-weight:500;color:var(--gray-800)}
+.region-summary-ratio{font-family:'DM Mono',monospace;font-size:11px;color:var(--gray-400)}
+.region-material-list{padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+.region-material-row{border:1px solid var(--gray-100);border-radius:var(--radius-sm);padding:10px;background:var(--gray-50)}
+.region-material-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.region-material-name{font-size:12px;font-weight:500;color:var(--gray-800)}
+.region-material-colors{display:flex;flex-wrap:wrap;gap:6px}
+.material-color-option{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid var(--gray-200);border-radius:16px;background:var(--white);font-size:11px;color:var(--gray-600)}
+.material-color-option.base{border-color:var(--black);color:var(--black)}
+.material-empty{font-size:12px;color:var(--gray-400);padding:10px 0}
+
 .remark-field{margin-top:16px}
 .remark-field label{display:block;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600);margin-bottom:6px}
 textarea.remark-input{width:100%;padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--white);color:var(--black);resize:vertical;min-height:70px;outline:none;transition:border-color .2s}
@@ -192,7 +206,7 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
 
 <main>
   <div class="page-title">营销物料费用分摊</div>
-  <div class="page-sub">主色费用由所有参与区域共摊，套色费用由勾选区域分摊</div>
+  <div class="page-sub">先确认素材清单，再按主色、套色或单色规则分摊费用</div>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('calc',this)">计算分摊</button>
@@ -229,7 +243,7 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
     </div>
 
     <div class="card" id="card-step3-material" style="display:none">
-      <div class="card-title"><span class="card-title-num">3</span>本次每类素材制作了哪些颜色</div>
+      <div class="card-title"><span class="card-title-num">3</span>素材颜色 &amp; 区域清单确认</div>
       <div id="materialColorSetup"></div>
       <div id="materialUsageWrap" style="margin-top:18px"></div>
     </div>
@@ -298,7 +312,7 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <label style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600)">颜色列表
-            <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-400);margin-left:6px">第一行为主色，可用上下箭头调整顺序</span>
+            <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-400);margin-left:6px">仅维护颜色库，主色在素材设置里选择</span>
           </label>
           <button onclick="addColorRow('', '', 'editColorRows')"
             style="display:flex;align-items:center;gap:4px;padding:4px 12px;border:1px solid var(--gray-200);border-radius:20px;background:var(--white);font-size:12px;font-family:inherit;cursor:pointer;color:var(--gray-600)">
@@ -336,7 +350,7 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <label style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-600)">颜色列表
-            <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-400);margin-left:6px">第一行为主色，其余为套色</span>
+            <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-400);margin-left:6px">仅维护颜色库，主色在素材设置里选择</span>
           </label>
           <button onclick="addColorRow()"
             style="display:flex;align-items:center;gap:4px;padding:4px 12px;border:1px solid var(--gray-200);border-radius:20px;background:var(--white);font-size:12px;font-family:inherit;cursor:pointer;color:var(--gray-600)"
@@ -431,12 +445,13 @@ function initState(p) {
     fixedBudgets:{graphic:0, live:0, render:0, compare:0},
     materialColors: {},  // matKey → {colorName → bool}
     materialChecks: {},  // matKey → regionName → {colorName → bool}
+    materialBaseColors: {}, // matKey → colorName
   };
   regions.forEach(r => {
     S.regionActive[r.name] = true;
     S.colorChecks[r.name] = {};
     p.colors.forEach(c => {
-      // 默认：限制色只勾允许的区域，主色(index=0)默认勾上所有可选区域
+      // 默认：区域可选颜色来自产品颜色库和限定区域
       const allowed = !c.restrictedTo || c.restrictedTo.includes(r.name);
       S.colorChecks[r.name][c.name] = allowed;
     });
@@ -445,18 +460,20 @@ function initState(p) {
     S.colorPrices[m] = {};
     S.materialColors[m] = {};
     S.materialChecks[m] = {};
+    S.materialBaseColors[m] = '';
     p.colors.forEach(c => { S.colorPrices[m][c.name] = 0; });
     p.colors.forEach(c => {
-      S.materialColors[m][c.name] = true;
+      S.materialColors[m][c.name] = false;
     });
+    if (m === 'graphic' && p.colors[0]) {
+      S.materialBaseColors[m] = p.colors[0].name;
+      S.materialColors[m][p.colors[0].name] = true;
+    }
     regions.forEach(r => {
       S.materialChecks[m][r.name] = {};
-      p.colors.forEach(c => {
-        const allowed = !c.restrictedTo || c.restrictedTo.includes(r.name);
-        S.materialChecks[m][r.name][c.name] = allowed;
-      });
     });
   });
+  syncMaterialChecks();
 }
 
 // ─────────────────────────────────────
@@ -466,12 +483,10 @@ function renderColorTags(p) {
   const wrap = document.getElementById('colorTagsWrap');
   wrap.style.display = 'flex';
   wrap.innerHTML = p.colors.map((c,i) => {
-    const isMain = i === 0;
     const isRestricted = !!c.restrictedTo;
     let cls = 'color-tag';
-    if (isMain) cls += ' is-main';
-    else if (isRestricted) cls += ' is-restricted';
-    const hint = isMain ? '主色' : (isRestricted ? `仅${c.restrictedTo.join('、')}` : '套色');
+    if (isRestricted) cls += ' is-restricted';
+    const hint = isRestricted ? `仅${c.restrictedTo.join('、')}` : '可选';
     return `<span class="${cls}"><span class="color-tag-dot"></span>${c.name}<span style="opacity:.6;margin-left:3px;font-size:10px">${hint}</span></span>`;
   }).join('');
 }
@@ -587,6 +602,12 @@ function isBasePlusExtra(mat) {
   return BASE_PLUS_EXTRA_MATS.includes(mat);
 }
 
+function mainColorFor(mat) {
+  if (!isBasePlusExtra(mat)) return null;
+  const name = S.materialBaseColors?.[mat];
+  return S.product?.colors.find(c => c.name === name) || null;
+}
+
 function colorAllowedForRegion(color, regionName) {
   return !color.restrictedTo || color.restrictedTo.includes(regionName);
 }
@@ -594,12 +615,12 @@ function colorAllowedForRegion(color, regionName) {
 function producedColorsFor(mat) {
   const p = S.product;
   if (!p) return [];
-  return p.colors.filter((c, i) => isBasePlusExtra(mat) ? i === 0 || S.materialColors[mat][c.name] : S.materialColors[mat][c.name]);
+  return p.colors.filter(c => !!S.materialColors[mat]?.[c.name]);
 }
 
 function pricedColorsFor(mat, p=S.product) {
   if (!p) return [];
-  return p.colors.filter((c, i) => isBasePlusExtra(mat) ? i === 0 || S.materialColors[mat][c.name] : S.materialColors[mat][c.name]);
+  return p.colors.filter(c => !!S.materialColors[mat]?.[c.name]);
 }
 
 function materialParticipants(mat) {
@@ -616,7 +637,7 @@ function syncMaterialChecks() {
     regions.forEach(r => {
       S.materialChecks[mat][r.name] ||= {};
       S.product.colors.forEach(c => {
-        const produced = !!S.materialColors[mat][c.name] || (isBasePlusExtra(mat) && c === S.product.colors[0]);
+        const produced = !!S.materialColors[mat][c.name];
         const available = produced && S.regionActive[r.name] && S.colorChecks[r.name]?.[c.name] && colorAllowedForRegion(c, r.name);
         if (!available) {
           S.materialChecks[mat][r.name][c.name] = false;
@@ -634,15 +655,24 @@ function renderMaterialColorSetup() {
   if (!p) { wrap.innerHTML = ''; return; }
   wrap.innerHTML = MATS.map(mat => {
     const ruleText = isBasePlusExtra(mat)
-      ? '首个颜色为基础费用，其余颜色可作为套色费用'
+      ? '先选主色，再选择是否制作套色'
       : '每个颜色独立分摊';
-    const chips = p.colors.map((c, i) => {
-      const locked = isBasePlusExtra(mat) && i === 0;
-      const checked = locked || S.materialColors[mat][c.name];
-      return `<label style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:20px;background:${checked?'var(--gray-100)':'var(--white)'};font-size:12px;cursor:${locked?'not-allowed':'pointer'};opacity:${locked?'.75':'1'}">
-        <input type="checkbox" class="matrix-cb" ${checked?'checked':''} ${locked?'disabled':''}
+    const mainSelect = isBasePlusExtra(mat)
+      ? `<div class="fixed-budget-row" style="margin-bottom:12px">
+          <label>主色</label>
+          <select class="styled" onchange="onMaterialMainColor('${mat}',this.value)">
+            <option value="">— 选择主色 —</option>
+            ${p.colors.map(c => `<option value="${c.name}" ${S.materialBaseColors[mat]===c.name?'selected':''}>${c.name}</option>`).join('')}
+          </select>
+        </div>`
+      : '';
+    const chips = p.colors.map(c => {
+      const isBase = isBasePlusExtra(mat) && S.materialBaseColors[mat] === c.name;
+      const checked = !!S.materialColors[mat][c.name];
+      return `<label style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:20px;background:${checked?'var(--gray-100)':'var(--white)'};font-size:12px;cursor:${isBase?'not-allowed':'pointer'};opacity:${isBase?'.75':'1'}">
+        <input type="checkbox" class="matrix-cb" ${checked?'checked':''} ${isBase?'disabled':''}
           onchange="toggleMaterialColor('${mat}','${c.name}',this.checked)">
-        <span>${c.name}${locked?' · 基础色':''}</span>
+        <span>${c.name}${isBase?' · 主色':''}</span>
       </label>`;
     }).join('');
     return `<div class="material-section" style="margin-bottom:12px">
@@ -651,13 +681,31 @@ function renderMaterialColorSetup() {
         <span style="font-size:11px;color:var(--gray-400)">${ruleText}</span>
       </div>
       <div class="material-body">
+        ${mainSelect}
         <div class="color-tags" style="margin-top:0">${chips}</div>
       </div>
     </div>`;
   }).join('');
 }
 
+function onMaterialMainColor(mat, colorName) {
+  S.materialBaseColors[mat] = colorName;
+  if (colorName) {
+    S.materialColors[mat][colorName] = true;
+    const c = S.product.colors.find(x => x.name === colorName);
+    regions.forEach(r => {
+      const available = S.regionActive[r.name] && S.colorChecks[r.name]?.[colorName] && c && colorAllowedForRegion(c, r.name);
+      if (available) S.materialChecks[mat][r.name][colorName] = true;
+    });
+  }
+  syncMaterialChecks();
+  renderMaterialColorSetup();
+  renderMaterialUsageMatrices();
+  renderMaterialSections();
+}
+
 function toggleMaterialColor(mat, colorName, checked) {
+  if (isBasePlusExtra(mat) && S.materialBaseColors[mat] === colorName) return;
   S.materialColors[mat][colorName] = checked;
   regions.forEach(r => {
     if (S.materialChecks[mat]?.[r.name]) {
@@ -680,62 +728,64 @@ function renderMaterialUsageMatrices() {
   const wrap = document.getElementById('materialUsageWrap');
   if (!S.product) { wrap.innerHTML = ''; return; }
   syncMaterialChecks();
-  wrap.innerHTML = MATS.map(renderMaterialUsageMatrix).join('');
+  const materialWarns = MATS
+    .filter(mat => isBasePlusExtra(mat) && producedColorsFor(mat).length && !mainColorFor(mat))
+    .map(mat => `${MAT_LABELS[mat]}需要选择主色`);
+  const warnHtml = materialWarns.length
+    ? `<div class="alert alert-warn">⚠ ${materialWarns.join('；')}</div>`
+    : `<div class="alert alert-info">系统已按“区域上市颜色 ∩ 素材制作颜色”生成默认清单。只需要取消例外的素材或颜色即可。</div>`;
+  wrap.innerHTML = `${warnHtml}<div class="region-summary-grid">${regions.map(renderRegionMaterialSummary).join('')}</div>`;
 }
 
-function renderMaterialUsageMatrix(mat) {
+function renderRegionMaterialSummary(region) {
+  const isOn = S.regionActive[region.name];
+  const rows = MATS.map(mat => renderRegionMaterialRow(region, mat)).join('');
+  return `<div class="region-summary-card ${isOn?'':'region-off'}">
+    <div class="region-summary-head">
+      <div class="region-summary-title">${region.name}</div>
+      <div class="region-summary-ratio">${region.ratio}%</div>
+    </div>
+    <div class="region-material-list">${isOn ? rows : '<div class="material-empty">该区域已关闭</div>'}</div>
+  </div>`;
+}
+
+function renderRegionMaterialRow(region, mat) {
   const colors = producedColorsFor(mat);
-  const participants = materialParticipants(mat).length;
-  const ruleText = isBasePlusExtra(mat)
-    ? '基础色费用由本素材下勾选任意颜色的区域分摊；其他颜色只由勾选该颜色的区域分摊。'
-    : '每个颜色费用只由勾选该颜色的区域分摊。';
   if (!colors.length) {
-    return `<div class="material-section">
-      <div class="material-header"><div class="material-label">${MAT_LABELS[mat]}</div></div>
-      <div class="material-body"><div class="alert alert-warn">⚠ 本素材尚未选择制作颜色</div></div>
+    return `<div class="region-material-row">
+      <div class="region-material-top">
+        <span class="region-material-name">${MAT_LABELS[mat]}</span>
+        <span style="font-size:11px;color:var(--gray-400)">未制作</span>
+      </div>
     </div>`;
   }
-  let html = `<div class="material-section">
-    <div class="material-header">
-      <div class="material-label">${MAT_LABELS[mat]} · 区域使用范围</div>
-      <span style="font-size:11px;color:var(--gray-400)">${participants} 个区域参与</span>
+  const enabledColors = colors.filter(c => S.materialChecks[mat]?.[region.name]?.[c.name]);
+  const hasMaterial = enabledColors.length > 0;
+  const colorControls = colors.map(c => {
+    const available = materialCellAvailable(mat, region, c);
+    const checked = !!S.materialChecks[mat]?.[region.name]?.[c.name];
+    const isBase = isBasePlusExtra(mat) && S.materialBaseColors[mat] === c.name;
+    return `<label class="material-color-option ${isBase?'base':''}" style="${available?'':'opacity:.45'}">
+      <input type="checkbox" class="matrix-cb" ${checked?'checked':''} ${available?'':'disabled'}
+        onchange="onMaterialCheck('${mat}','${region.name}','${c.name}',this.checked)">
+      <span>${c.name}${isBase?' · 主色':''}</span>
+    </label>`;
+  }).join('');
+  return `<div class="region-material-row">
+    <div class="region-material-top">
+      <span class="region-material-name">${MAT_LABELS[mat]}</span>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--gray-600)">
+        <input type="checkbox" class="matrix-cb" ${hasMaterial?'checked':''}
+          onchange="toggleRegionMaterial('${region.name}','${mat}',this.checked)">
+        <span>${hasMaterial?'需要':'不需要'}</span>
+      </label>
     </div>
-    <div class="material-body">
-      <div class="alert alert-info">${ruleText}</div>
-      <div class="matrix-wrap"><table class="matrix"><thead><tr>
-        <th style="width:34px"></th><th class="region-col" style="text-align:left">区域</th><th style="text-align:right">比例</th>`;
-  colors.forEach((c, i) => {
-    const mainBadge = isBasePlusExtra(mat) && c === S.product.colors[0] ? '<span class="main-badge">基础色</span>' : '';
-    html += `<th>${c.name}${mainBadge}</th>`;
-  });
-  html += '</tr><tr class="select-all-row"><th></th><th style="text-align:left;font-size:11px;color:var(--gray-600);font-weight:400;text-transform:none;letter-spacing:0">全选 / 取消</th><th></th>';
-  colors.forEach(c => {
-    const selectable = regions.filter(r => materialCellAvailable(mat, r, c));
-    const allChecked = selectable.length > 0 && selectable.every(r => S.materialChecks[mat][r.name][c.name]);
-    html += `<th><div class="cb-wrap"><input type="checkbox" class="matrix-cb" ${allChecked?'checked':''} onchange="selectAllMaterialColor('${mat}','${c.name}',this.checked)"></div></th>`;
-  });
-  html += '</tr></thead><tbody>';
-  regions.forEach(r => {
-    const isOn = S.regionActive[r.name];
-    html += `<tr class="${isOn?'':'region-off'}"><td></td><td class="region-name">${r.name}</td><td class="ratio-cell">${r.ratio}%</td>`;
-    colors.forEach(c => {
-      const available = materialCellAvailable(mat, r, c);
-      if (!available) {
-        html += `<td><span style="color:var(--gray-200);font-size:15px">—</span></td>`;
-      } else {
-        const checked = S.materialChecks[mat][r.name][c.name];
-        html += `<td><div class="cb-wrap"><input type="checkbox" class="matrix-cb" ${checked?'checked':''} onchange="onMaterialCheck('${mat}','${r.name}','${c.name}',this.checked)"></div></td>`;
-      }
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table></div></div></div>';
-  return html;
+    <div class="region-material-colors">${colorControls}</div>
+  </div>`;
 }
 
 function materialCellAvailable(mat, region, color) {
-  const baseLocked = isBasePlusExtra(mat) && color === S.product.colors[0];
-  return (baseLocked || !!S.materialColors[mat]?.[color.name]) &&
+  return !!S.materialColors[mat]?.[color.name] &&
     S.regionActive[region.name] &&
     S.colorChecks[region.name]?.[color.name] &&
     colorAllowedForRegion(color, region.name);
@@ -746,12 +796,12 @@ function onMaterialCheck(mat, region, color, checked) {
   renderMaterialUsageMatrices();
 }
 
-function selectAllMaterialColor(mat, colorName, checked) {
-  const color = S.product.colors.find(c => c.name === colorName);
-  if (!color) return;
-  regions.forEach(r => {
-    if (materialCellAvailable(mat, r, color)) {
-      S.materialChecks[mat][r.name][colorName] = checked;
+function toggleRegionMaterial(regionName, mat, checked) {
+  const region = regions.find(r => r.name === regionName);
+  if (!region) return;
+  producedColorsFor(mat).forEach(c => {
+    if (materialCellAvailable(mat, region, c)) {
+      S.materialChecks[mat][regionName][c.name] = checked;
     }
   });
   renderMaterialUsageMatrices();
@@ -857,7 +907,7 @@ function renderBodyFor(mat) {
 }
 
 function colorPriceField(mat, c, i, v, readonly) {
-  const isBase = isBasePlusExtra(mat) && S.product.colors[0]?.name === c.name;
+  const isBase = isBasePlusExtra(mat) && S.materialBaseColors[mat] === c.name;
   const label = `${c.name}${isBase ? ' <span style="font-size:10px;color:var(--black);background:var(--gray-100);padding:1px 5px;border-radius:4px">基础色</span>' : ''}${c.restrictedTo ? ` <span style="font-size:10px;color:var(--amber)">限定</span>` : ''}`;
   return `<div class="color-price-field">
     <label>${label}</label>
@@ -924,6 +974,13 @@ function calculate() {
   syncMaterialChecks();
   const activeR = regions.filter(r => S.regionActive[r.name]);
   if (!activeR.length) { showToast('⚠ 请至少开启一个区域'); return; }
+  const missingBase = BASE_PLUS_EXTRA_MATS
+    .filter(mat => producedColorsFor(mat).length && !mainColorFor(mat))
+    .map(mat => MAT_LABELS[mat]);
+  if (missingBase.length) {
+    showToast(`⚠ 请先选择${missingBase.join('、')}的主色`, 6000);
+    return;
+  }
 
   const resultRegions = activeR.filter(r => MATS.some(m => materialParticipants(m).some(pr => pr.name === r.name)));
   if (!resultRegions.length) { showToast('⚠ 请至少为一个区域勾选素材使用范围'); return; }
@@ -952,7 +1009,8 @@ function calculate() {
     const priceColors = pricedColorsFor(mat, p);
 
     if (isBasePlusExtra(mat)) {
-      const baseColor = p.colors[0];
+      const baseColor = mainColorFor(mat);
+      if (!baseColor) return;
       const basePrice = prices[baseColor.name] || 0;
       if (basePrice > 0) {
         distributeByRatio(basePrice, materialParticipants(mat), addToDetail);
@@ -1106,9 +1164,9 @@ function renderDataTab() {
         </button>
       </div>
       <div class="color-tags">${p.colors.map((c,i)=>{
-        const isMain=i===0, isR=!!c.restrictedTo;
-        let cls='color-tag'+(isMain?' is-main':isR?' is-restricted':'');
-        const hint=isMain?'主色':isR?`仅${c.restrictedTo.join('、')}`:'套色';
+        const isR=!!c.restrictedTo;
+        let cls='color-tag'+(isR?' is-restricted':'');
+        const hint=isR?`仅${c.restrictedTo.join('、')}`:'可选';
         return `<span class="${cls}"><span class="color-tag-dot"></span>${c.name}<span style="opacity:.6;margin-left:3px;font-size:10px">${hint}</span></span>`;
       }).join('')}</div>
     </div>`).join('') || '<div class="empty-state" style="padding:24px">暂无产品数据，请先同步 Notion</div>';
@@ -1123,7 +1181,6 @@ function addColorRow(name='', restrict='', targetId='colorRows') {
   colorRowCount++;
   const idx = colorRowCount;
   const target = document.getElementById(targetId);
-  const isMain = target.children.length === 0;
   const row = document.createElement('div');
   row.className = 'color-row';
   row.dataset.idx = idx;
@@ -1137,7 +1194,7 @@ function addColorRow(name='', restrict='', targetId='colorRows') {
   // 颜色名输入
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
-  nameInput.placeholder = isMain ? '主色名，如：星空黑' : '套色名，如：皓月白';
+  nameInput.placeholder = '颜色名，如：星空黑';
   nameInput.value = name;
   nameInput.style.cssText = 'flex:1;min-width:130px;max-width:180px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;outline:none;transition:border-color .2s';
   nameInput.onfocus = () => nameInput.style.borderColor = 'var(--black)';
@@ -1148,11 +1205,6 @@ function addColorRow(name='', restrict='', targetId='colorRows') {
   sel.style.cssText = `flex:1;min-width:160px;max-width:220px;padding:8px 28px 8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;color:var(--black);cursor:pointer;outline:none;appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;transition:border-color .2s`;
   sel.onfocus = () => sel.style.borderColor = 'var(--black)';
   sel.onblur  = () => sel.style.borderColor = 'var(--gray-200)';
-  if (isMain) {
-    sel.disabled = true;
-    sel.style.opacity = '0.4';
-    sel.style.cursor = 'not-allowed';
-  }
   // 选项
   const noRestrict = document.createElement('option');
   noRestrict.value = '';
@@ -1166,7 +1218,7 @@ function addColorRow(name='', restrict='', targetId='colorRows') {
     sel.appendChild(opt);
   });
 
-  // 删除按钮（主色不可删）
+  // 删除按钮（至少保留一个颜色）
   const delBtn = document.createElement('button');
   delBtn.type = 'button';
   delBtn.title = '删除此颜色';
@@ -1211,12 +1263,10 @@ function refreshColorBadges(targetId='colorRows') {
     row.querySelector('div').textContent = i + 1;
     const sel = row.querySelector('select');
     const delBtn = row.querySelector('button[title="删除此颜色"]');
-    const isMain = i === 0;
     if (sel) {
-      sel.disabled = isMain;
-      sel.style.opacity = isMain ? '0.4' : '1';
-      sel.style.cursor = isMain ? 'not-allowed' : 'pointer';
-      if (isMain) sel.value = '';
+      sel.disabled = false;
+      sel.style.opacity = '1';
+      sel.style.cursor = 'pointer';
     }
     if (delBtn) {
       delBtn.disabled = document.querySelectorAll(`#${targetId} .color-row`).length <= 1;
@@ -1229,14 +1279,14 @@ function refreshColorBadges(targetId='colorRows') {
 function buildColorPayload(targetId) {
   const rows = Array.from(document.querySelectorAll(`#${targetId} .color-row`));
   const colorNames = rows.map(r => r.querySelector('input').value.trim());
-  if (!rows.length) throw new Error('请至少添加一个颜色（主色）');
+  if (!rows.length) throw new Error('请至少添加一个颜色');
   if (colorNames.some(n => !n)) throw new Error('颜色名称不能为空');
   if (new Set(colorNames).size !== colorNames.length) throw new Error('存在重复的颜色名称');
 
   const restrictNotes = [];
   rows.forEach((r, i) => {
     const cname = r.querySelector('input').value.trim();
-    const rval  = i === 0 ? '' : r.querySelector('select').value;
+    const rval  = r.querySelector('select').value;
     if (rval) restrictNotes.push(`${cname}仅${rval}`);
   });
 
