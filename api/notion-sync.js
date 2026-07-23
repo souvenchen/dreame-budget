@@ -44,7 +44,9 @@ function normalizeMonthValue(value) {
 }
 
 function parseRegionRows(pages) {
-  const rows = [];
+  const wideRows = [];
+  const legacyRows = [];
+  const wideMonths = new Set();
   pages.forEach(page => {
     const props = page.properties;
     const title = getProp(props, '区域名称', 'title');
@@ -56,16 +58,18 @@ function parseRegionRows(pages) {
       .map(name => ({ name, ratio: getProp(props, name, 'number') }))
       .filter(item => item.ratio !== null);
     if (month && wideValues.length) {
-      wideValues.forEach(item => rows.push({ name: item.name, ratio: item.ratio, month, note }));
+      wideMonths.add(month);
+      wideValues.forEach(item => wideRows.push({ name: item.name, ratio: item.ratio, month, note }));
       return;
     }
 
     // Legacy format: one Notion row per region per month.
     const legacyRatio = getProp(props, '分摊比例(%)', 'number');
     if (title && legacyRatio !== null) {
-      rows.push({ name: title, ratio: legacyRatio, month, note });
+      legacyRows.push({ name: title, ratio: legacyRatio, month, note });
     }
   });
+  const rows = wideRows.concat(legacyRows.filter(row => !wideMonths.has(row.month)));
   return rows.filter(r => r.name && r.month);
 }
 
