@@ -3,20 +3,27 @@ const REGION_DB    = process.env.REGION_DB_ID  || '6b7b434c-8690-4e61-9456-0bef8
 const PRODUCT_DB   = process.env.PRODUCT_DB_ID || '98f2e4e0-9df1-4c14-b913-884515d37122';
 
 async function queryDB(dbId, label) {
-  const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${NOTION_TOKEN}`,
-      'Notion-Version': '2022-06-28',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ page_size: 100 }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(`[${label}] Notion API ${res.status}: ${body.message || body.code || '未知错误'}`);
-  }
-  return res.json();
+  const results = [];
+  let startCursor;
+  do {
+    const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ page_size: 100, ...(startCursor ? { start_cursor: startCursor } : {}) }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(`[${label}] Notion API ${res.status}: ${body.message || body.code || '未知错误'}`);
+    }
+    const data = await res.json();
+    results.push(...data.results);
+    startCursor = data.has_more ? data.next_cursor : null;
+  } while (startCursor);
+  return { results };
 }
 
 function getProp(props, key, type) {
@@ -24,7 +31,7 @@ function getProp(props, key, type) {
   if (!p) return null;
   if (type === 'title')  return p.title?.[0]?.plain_text || '';
   if (type === 'number') return p.number ?? null;
-  if (type === 'text')   return p.rich_text?.[0]?.plain_text || '';
+  if (type === 'text')   return p.rich_text?.[0]?.plain_text || p.select?.name || p.date?.start || '';
   return null;
 }
 

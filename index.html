@@ -218,7 +218,8 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
       <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
         <div class="month-field">
           <label>截止月份</label>
-          <input type="month" class="month-input" id="calcMonth">
+          <input type="month" class="month-input" id="calcMonth" onchange="onCalcMonthChange()">
+          <div id="monthRatioHint" style="font-size:11px;color:var(--gray-400);line-height:1.6"></div>
         </div>
         <div class="product-select-row">
           <label>选择产品</label>
@@ -373,6 +374,7 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
 // ─────────────────────────────────────
 // 基础数据（Notion 是唯一数据源，页面加载时自动拉取）
 // ─────────────────────────────────────
+let allRegions = [];
 let regions  = [];
 let products = [];
 
@@ -405,6 +407,75 @@ document.addEventListener('DOMContentLoaded', async () => {
   await syncFromNotion({ silent: true });
 });
 
+function normalizeMonthValue(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{4})[-/.年](\d{1,2})/);
+  if (!match) return raw;
+  return `${match[1]}-${String(Number(match[2])).padStart(2,'0')}`;
+}
+
+function selectedMonth() {
+  return normalizeMonthValue(document.getElementById('calcMonth').value);
+}
+
+function allRegionNames() {
+  return [...new Set(allRegions.map(r => r.name).filter(Boolean))];
+}
+
+function getMonthRegionStatus(month = selectedMonth()) {
+  const rows = allRegions.filter(r => normalizeMonthValue(r.month) === month);
+  const byName = new Map();
+  const duplicates = [];
+  rows.forEach(r => {
+    if (byName.has(r.name)) duplicates.push(r.name);
+    else byName.set(r.name, r);
+  });
+  const names = allRegionNames();
+  const missing = names.filter(name => !byName.has(name));
+  const monthRegions = [...byName.values()];
+  const total = monthRegions.reduce((sum, r) => sum + (Number(r.ratio) || 0), 0);
+  const ok = !!month && monthRegions.length > 0 && missing.length === 0 && duplicates.length === 0;
+  return {
+    month,
+    regions: monthRegions,
+    total,
+    missing,
+    duplicates: [...new Set(duplicates)],
+    ok,
+    hasData: monthRegions.length > 0,
+  };
+}
+
+function monthRatioMessage(status) {
+  if (!status.month) return '请先选择计算月份';
+  if (!allRegions.length) return '请先同步 Notion 区域比例库';
+  if (!status.hasData) return `${status.month} 没有区域比例，请先在 Notion 补充该月份数据`;
+  if (status.missing.length) return `${status.month} 区域比例不完整，缺少：${status.missing.join('、')}`;
+  if (status.duplicates.length) return `${status.month} 存在重复区域：${status.duplicates.join('、')}`;
+  return `${status.month} 已载入 ${status.regions.length} 个区域，比例合计 ${status.total.toFixed(2)}%`;
+}
+
+function applySelectedMonthRegions() {
+  const status = getMonthRegionStatus();
+  regions = status.regions;
+  updateMonthRatioHint(status);
+  return status;
+}
+
+function updateMonthRatioHint(status = getMonthRegionStatus()) {
+  const el = document.getElementById('monthRatioHint');
+  if (!el) return;
+  el.textContent = monthRatioMessage(status);
+  el.style.color = status.ok ? 'var(--gray-500)' : 'var(--red)';
+}
+
+function onCalcMonthChange() {
+  const hadProduct = document.getElementById('productSelect').value !== '';
+  applySelectedMonthRegions();
+  if (hadProduct) onProductChange();
+  renderDataTab();
+}
+
 function populateProductSelect() {
   const sel = document.getElementById('productSelect');
   sel.innerHTML = '<option value="">— 请选择产品 —</option>';
@@ -424,6 +495,13 @@ function onProductChange() {
   document.getElementById('resultWrap').style.display = 'none';
   document.getElementById('colorTagsWrap').style.display = 'none';
   if (idx === '') { S = {}; return; }
+
+  const ratioStatus = applySelectedMonthRegions();
+  if (!ratioStatus.ok) {
+    S = {};
+    showToast('⚠ ' + monthRatioMessage(ratioStatus), 6000);
+    return;
+  }
 
   const p = products[parseInt(idx)];
   initState(p);
@@ -970,6 +1048,11 @@ function distributeByRatio(total, participants, addAmount) {
 function calculate() {
   const p = S.product;
   if (!p) { showToast('⚠ 请先选择产品'); return; }
+  const ratioStatus = getMonthRegionStatus();
+  if (!ratioStatus.ok) {
+    showToast('⚠ ' + monthRatioMessage(ratioStatus), 6000);
+    return;
+  }
   syncMaterialChecks();
   const activeR = regions.filter(r => S.regionActive[r.name]);
   if (!activeR.length) { showToast('⚠ 请至少开启一个区域'); return; }
@@ -1136,13 +1219,14 @@ function delHist(id) {
 // 基础数据 Tab
 // ─────────────────────────────────────
 function renderDataTab() {
-  document.getElementById('regionDataTbody').innerHTML = regions.map(r=>`
+  const month = selectedMonth();
+  document.getElementById('regionDataTbody').innerHTML = allRegions.map(r=>`
     <tr>
-      <td style="text-align:left;font-weight:500">${r.name}</td>
+      <td style="text-align:left;font-weight:500">${r.name}${normalizeMonthValue(r.month)===month?' <span class="main-badge">当前月份</span>':''}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace">${r.ratio}%</td>
       <td style="font-family:'DM Mono',monospace;color:var(--gray-600);padding-left:16px">${r.month||'—'}</td>
       <td style="color:var(--gray-400)">${r.note||'—'}</td>
-    </tr>`).join('');
+    </tr>`).join('') || '<tr><td colspan="4" class="empty-state">暂无区域比例数据，请先同步 Notion</td></tr>';
 
   document.getElementById('productDataWrap').innerHTML = products.map((p,idx)=>`
     <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--gray-100)">
@@ -1200,11 +1284,11 @@ function addColorRow(name='', restrict='', targetId='colorRows') {
   noRestrict.value = '';
   noRestrict.textContent = '不限区域（所有区域可选）';
   sel.appendChild(noRestrict);
-  regions.forEach(r => {
+  allRegionNames().forEach(name => {
     const opt = document.createElement('option');
-    opt.value = r.name;
-    opt.textContent = '仅 ' + r.name;
-    if (r.name === restrict) opt.selected = true;
+    opt.value = name;
+    opt.textContent = '仅 ' + name;
+    if (name === restrict) opt.selected = true;
     sel.appendChild(opt);
   });
 
@@ -1427,7 +1511,8 @@ async function syncFromNotion({ silent = false } = {}) {
     if (!data.ok) throw new Error(data.error || '同步失败');
 
     // 覆盖全局数据（Notion 是唯一数据源）
-    regions  = data.regions;
+    allRegions = data.regions;
+    applySelectedMonthRegions();
     products = data.products;
 
     populateProductSelect();
