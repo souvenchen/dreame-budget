@@ -280,6 +280,7 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
     </div>
     <div class="card">
       <div class="card-title" style="margin-bottom:14px">区域分摊比例</div>
+      <div id="regionDataMonthHint" style="font-size:12px;color:var(--gray-500);margin:-6px 0 12px"></div>
       <div style="overflow-x:auto">
         <table class="matrix" id="regionDataTable">
           <thead><tr>
@@ -1220,13 +1221,19 @@ function delHist(id) {
 // ─────────────────────────────────────
 function renderDataTab() {
   const month = selectedMonth();
-  document.getElementById('regionDataTbody').innerHTML = allRegions.map(r=>`
+  const status = applySelectedMonthRegions();
+  const dataHint = document.getElementById('regionDataMonthHint');
+  if (dataHint) dataHint.textContent = month ? `当前显示：${month} 的区域分摊比例` : '当前显示：请先在第一个页面选择计算月份';
+  const emptyText = month
+    ? `${month} 暂无区域比例数据，请先在 Notion 补充后同步`
+    : '请先在第一个页面选择计算月份';
+  document.getElementById('regionDataTbody').innerHTML = status.regions.map(r=>`
     <tr>
-      <td style="text-align:left;font-weight:500">${r.name}${normalizeMonthValue(r.month)===month?' <span class="main-badge">当前月份</span>':''}</td>
+      <td style="text-align:left;font-weight:500">${r.name}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace">${r.ratio}%</td>
       <td style="font-family:'DM Mono',monospace;color:var(--gray-600);padding-left:16px">${r.month||'—'}</td>
       <td style="color:var(--gray-400)">${r.note||'—'}</td>
-    </tr>`).join('') || '<tr><td colspan="4" class="empty-state">暂无区域比例数据，请先同步 Notion</td></tr>';
+    </tr>`).join('') || `<tr><td colspan="4" class="empty-state">${emptyText}</td></tr>`;
 
   document.getElementById('productDataWrap').innerHTML = products.map((p,idx)=>`
     <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--gray-100)">
@@ -1560,7 +1567,10 @@ function switchTab(tab, btn) {
   document.getElementById(`tab-${tab}`).classList.add('active');
   btn.classList.add('active');
   if(tab==='history') renderHistory();
-  if(tab==='data') initAddProductForm();
+  if(tab==='data') {
+    renderDataTab();
+    initAddProductForm();
+  }
 }
 
 // ─────────────────────────────────────
