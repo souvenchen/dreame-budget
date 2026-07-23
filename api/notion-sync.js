@@ -1,6 +1,7 @@
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const REGION_DB    = process.env.REGION_DB_ID  || '6b7b434c-8690-4e61-9456-0bef867b003c';
 const PRODUCT_DB   = process.env.PRODUCT_DB_ID || '98f2e4e0-9df1-4c14-b913-884515d37122';
+const REGION_NAMES = ['新兴','亚欧区','日本','澳洲','东北欧','土耳其','韩国','北美','台湾','西南欧','东南亚（不含台湾）'];
 
 async function queryDB(dbId, label) {
   const results = [];
@@ -35,6 +36,39 @@ function getProp(props, key, type) {
   return null;
 }
 
+function normalizeMonthValue(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{4})[-/.年](\d{1,2})/);
+  if (!match) return raw;
+  return `${match[1]}-${String(Number(match[2])).padStart(2,'0')}`;
+}
+
+function parseRegionRows(pages) {
+  const rows = [];
+  pages.forEach(page => {
+    const props = page.properties;
+    const title = getProp(props, '区域名称', 'title');
+    const month = normalizeMonthValue(getProp(props, '截止月份', 'text') || title);
+    const note = getProp(props, '备注', 'text') || '';
+
+    // New format: one Notion row per month, with each region as a number column.
+    const wideValues = REGION_NAMES
+      .map(name => ({ name, ratio: getProp(props, name, 'number') }))
+      .filter(item => item.ratio !== null);
+    if (month && wideValues.length) {
+      wideValues.forEach(item => rows.push({ name: item.name, ratio: item.ratio, month, note }));
+      return;
+    }
+
+    // Legacy format: one Notion row per region per month.
+    const legacyRatio = getProp(props, '分摊比例(%)', 'number');
+    if (title && legacyRatio !== null) {
+      rows.push({ name: title, ratio: legacyRatio, month, note });
+    }
+  });
+  return rows.filter(r => r.name && r.month);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -46,12 +80,7 @@ export default async function handler(req, res) {
     const regionData  = await queryDB(REGION_DB, '区域比例库');
     const productData = await queryDB(PRODUCT_DB, '产品颜色库');
 
-    const regions = regionData.results.map(p => ({
-      name:  getProp(p.properties, '区域名称', 'title'),
-      ratio: getProp(p.properties, '分摊比例(%)', 'number') ?? 0,
-      month: getProp(p.properties, '截止月份', 'text') || '',
-      note:  getProp(p.properties, '备注', 'text') || '',
-    })).filter(r => r.name);
+    const regions = parseRegionRows(regionData.results);
 
     const products = productData.results.map(p => {
       const name     = getProp(p.properties, '产品名称', 'title');
