@@ -49,7 +49,7 @@ function parseRegionRows(pages) {
   const wideMonths = new Set();
   pages.forEach(page => {
     const props = page.properties;
-    const title = getProp(props, '区域名称', 'title');
+    const title = getProp(props, '月份', 'title') || getProp(props, '区域名称', 'title');
     const month = normalizeMonthValue(getProp(props, '截止月份', 'text') || title);
     const note = getProp(props, '备注', 'text') || '';
 
