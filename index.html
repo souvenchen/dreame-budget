@@ -166,8 +166,13 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
 .history-month{font-size:14px;font-weight:500}
 .history-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
 .history-total{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
+.history-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.history-load{background:var(--white);border:1px solid var(--gray-200);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--gray-800);cursor:pointer;font-family:inherit}
+.history-load:hover{border-color:var(--black)}
 .history-del{background:none;border:1px solid var(--gray-200);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--red);cursor:pointer;margin-left:12px;font-family:inherit}
 .history-del:hover{background:var(--red-light);border-color:var(--red)}
+.history-edit-notice{display:none;margin-top:14px;padding:10px 14px;border:1px solid var(--amber);background:#fffbeb;border-radius:var(--radius-sm);font-size:12px;color:#92400e;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.history-edit-notice button{border:1px solid rgba(146,64,14,.25);background:#fff7ed;color:#92400e;border-radius:6px;padding:4px 10px;font-size:11px;font-family:inherit;cursor:pointer}
 .empty-state{text-align:center;padding:60px 20px;color:var(--gray-400);font-size:13px}
 
 .notion-info{display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--blue-light);border:1px solid #bfdbfe;border-radius:var(--radius-sm);margin-bottom:20px}
@@ -229,6 +234,7 @@ table.result-tbl tfoot td{font-weight:500;border-top:1.5px solid var(--gray-200)
         </div>
       </div>
       <div class="color-tags" id="colorTagsWrap" style="display:none"></div>
+      <div class="history-edit-notice" id="historyEditNotice"></div>
     </div>
 
     <div class="card" id="card-step2" style="display:none">
@@ -390,6 +396,7 @@ const COMPARE_COLOR_OPTIONS = [
 // 计算状态
 let S = {};
 let history = JSON.parse(localStorage.getItem('dreame_budget_v3') || '[]');
+let loadedHistoryId = null;
 
 const PROD_API_ORIGIN = 'https://dreame-budget-new.vercel.app';
 function apiUrl(path) {
@@ -417,6 +424,10 @@ function normalizeMonthValue(value) {
 
 function selectedMonth() {
   return normalizeMonthValue(document.getElementById('calcMonth').value);
+}
+
+function cloneData(value) {
+  return JSON.parse(JSON.stringify(value || {}));
 }
 
 function allRegionNames() {
@@ -490,6 +501,8 @@ function populateProductSelect() {
 // Step 1: 选产品
 // ─────────────────────────────────────
 function onProductChange() {
+  loadedHistoryId = null;
+  updateHistoryEditNotice();
   const idx = document.getElementById('productSelect').value;
   ['card-step2','card-step3-material','card-step3'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('calcBtn').style.display = 'none';
@@ -553,6 +566,58 @@ function initState(p) {
     }
     regions.forEach(r => {
       S.materialChecks[m][r.name] = {};
+    });
+  });
+  syncMaterialChecks();
+}
+
+function getCurrentStateSnapshot() {
+  if (!S.product) return null;
+  return {
+    productId: S.product.id || '',
+    productName: S.product.name || '',
+    regionActive: cloneData(S.regionActive),
+    colorChecks: cloneData(S.colorChecks),
+    simpleMode: cloneData(S.simpleMode),
+    simpleTotals: cloneData(S.simpleTotals),
+    colorPrices: cloneData(S.colorPrices),
+    materialColors: cloneData(S.materialColors),
+    materialChecks: cloneData(S.materialChecks),
+    materialBaseColors: cloneData(S.materialBaseColors),
+  };
+}
+
+function restoreStateSnapshot(snapshot, product) {
+  if (!snapshot || !product) return;
+  const defaults = cloneData(S);
+  S.simpleMode = {...defaults.simpleMode, ...cloneData(snapshot.simpleMode)};
+  S.simpleTotals = {...defaults.simpleTotals, ...cloneData(snapshot.simpleTotals)};
+  S.materialBaseColors = {...defaults.materialBaseColors, ...cloneData(snapshot.materialBaseColors)};
+
+  regions.forEach(r => {
+    if (typeof snapshot.regionActive?.[r.name] === 'boolean') S.regionActive[r.name] = snapshot.regionActive[r.name];
+    product.colors.forEach(c => {
+      if (typeof snapshot.colorChecks?.[r.name]?.[c.name] === 'boolean') {
+        S.colorChecks[r.name][c.name] = snapshot.colorChecks[r.name][c.name];
+      }
+    });
+  });
+
+  MATS.forEach(mat => {
+    materialColorOptionsFor(mat, product).forEach(c => {
+      if (typeof snapshot.materialColors?.[mat]?.[c.name] === 'boolean') {
+        S.materialColors[mat][c.name] = snapshot.materialColors[mat][c.name];
+      }
+      if (typeof snapshot.colorPrices?.[mat]?.[c.name] === 'number') {
+        S.colorPrices[mat][c.name] = snapshot.colorPrices[mat][c.name];
+      }
+    });
+    regions.forEach(r => {
+      materialColorOptionsFor(mat, product).forEach(c => {
+        if (typeof snapshot.materialChecks?.[mat]?.[r.name]?.[c.name] === 'boolean') {
+          S.materialChecks[mat][r.name][c.name] = snapshot.materialChecks[mat][r.name][c.name];
+        }
+      });
     });
   });
   syncMaterialChecks();
@@ -1115,9 +1180,22 @@ function calculate() {
 
   const month = document.getElementById('calcMonth').value;
   const remark = document.getElementById('remark').value;
-  const rec = {id:Date.now(), month, remark, product:p.name, detail, regionTotals, grandTotal, createdAt:new Date().toLocaleString('zh-CN')};
+  const rec = {
+    id:Date.now(),
+    month,
+    remark,
+    product:p.name,
+    productId:p.id || '',
+    state:getCurrentStateSnapshot(),
+    detail,
+    regionTotals,
+    grandTotal,
+    createdAt:new Date().toLocaleString('zh-CN')
+  };
 
   renderResult(rec);
+  loadedHistoryId = null;
+  updateHistoryEditNotice();
   history.unshift(rec);
   if (history.length>50) history=history.slice(0,50);
   localStorage.setItem('dreame_budget_v3', JSON.stringify(history));
@@ -1194,8 +1272,9 @@ function renderHistory() {
           <div class="history-month">${rec.month||'—'} · ${rec.product}</div>
           <div class="history-sub">${rec.createdAt}${rec.remark?' · '+rec.remark.slice(0,24):''}</div>
         </div>
-        <div style="display:flex;align-items:center">
+        <div class="history-actions">
           <span class="history-total">¥${fmt(rec.grandTotal)}</span>
+          <button class="history-load" onclick="event.stopPropagation();loadHistoryForEdit(${rec.id})">载入并编辑</button>
           <button class="history-del" onclick="event.stopPropagation();delHist(${rec.id})">删除</button>
         </div>
       </div>
@@ -1209,6 +1288,70 @@ function expandHist(id) {
   if (el.style.display==='block'){el.style.display='none';return;}
   el.style.display='block'; el.innerHTML=renderResult(rec,true);
 }
+
+function findProductForRecord(rec) {
+  return products.find(p => rec.productId && p.id === rec.productId) ||
+    products.find(p => p.name === rec.product) || null;
+}
+
+function loadHistoryForEdit(id) {
+  const rec = history.find(r => r.id == id);
+  if (!rec) return;
+  const month = normalizeMonthValue(rec.month);
+  document.getElementById('calcMonth').value = month;
+  const ratioStatus = applySelectedMonthRegions();
+  if (!ratioStatus.ok) {
+    showToast('⚠ ' + monthRatioMessage(ratioStatus), 6000);
+    return;
+  }
+  const p = findProductForRecord(rec);
+  if (!p) {
+    showToast(`⚠ 当前产品颜色库里找不到「${rec.product}」，无法恢复编辑`, 6000);
+    return;
+  }
+  const idx = products.indexOf(p);
+  document.getElementById('productSelect').value = String(idx);
+  initState(p);
+  if (rec.state) {
+    restoreStateSnapshot(rec.state, p);
+  }
+  document.getElementById('remark').value = rec.remark || '';
+  renderColorTags(p);
+  renderMatrix();
+  renderMaterialColorSetup();
+  renderMaterialUsageMatrices();
+  renderMaterialSections();
+  document.getElementById('card-step2').style.display = 'block';
+  document.getElementById('card-step3-material').style.display = 'block';
+  document.getElementById('card-step3').style.display = 'block';
+  document.getElementById('calcBtn').style.display = 'block';
+  renderResult(rec);
+  loadedHistoryId = id;
+  updateHistoryEditNotice(rec, !rec.state);
+  switchTab('calc', document.querySelector('.tab-btn[onclick*="calc"]'));
+  window.scrollTo({top:0,behavior:'smooth'});
+  showToast(rec.state ? '已载入历史记录，可在此基础上修改后重新计算' : '已载入旧历史记录，可恢复月份、产品、备注和结果');
+}
+
+function updateHistoryEditNotice(rec = history.find(r => r.id == loadedHistoryId), partial = false) {
+  const el = document.getElementById('historyEditNotice');
+  if (!el) return;
+  if (!rec || !loadedHistoryId) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  el.style.display = 'flex';
+  el.innerHTML = `<span>已载入 ${rec.month || '—'} · ${rec.product} 的历史记录${partial ? '（旧记录仅恢复部分字段）' : ''}，修改后重新计算会生成新的历史记录。</span>
+    <button onclick="clearLoadedHistory()">清除载入状态</button>`;
+}
+
+function clearLoadedHistory() {
+  loadedHistoryId = null;
+  updateHistoryEditNotice();
+  showToast('已清除历史载入提示');
+}
+
 function delHist(id) {
   if(!confirm('确认删除？')) return;
   history=history.filter(r=>r.id!=id);
